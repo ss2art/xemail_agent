@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  email-agent-ai:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-5}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - ENABLE_GUARDRAIL=${ENABLE_GUARDRAIL:-True}
+      - DATA_DIR=/app/data
+      - VECTOR_DIR=/app/data/vectorstore
+    volumes:
+      - ./data:/app/data
