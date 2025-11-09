@@ -1,0 +1,4 @@
+[
+  {"title": "Implement Guardrail Agent", "body": "Validate incoming email structure and reject malformed or empty messages.", "labels": ["backend","guardrail","LLM"], "milestone": "Phase 1"},
+  {"title": "Integrate LLM Classifier", "body": "Connect GPT-5 model for topic classification and spam/job/newsletter categorization.", "labels": ["LLM","core"], "milestone": "Phase 1"}
+]
