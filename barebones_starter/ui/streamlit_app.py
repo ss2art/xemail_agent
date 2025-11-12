@@ -1,12 +1,20 @@
-import os, pandas as pd, streamlit as st
+# --- Path Fix for Cross-Platform Imports ---
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from dotenv import load_dotenv
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# --- Standard Imports
+import os, pandas as pd, streamlit as st
 from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
 from email import policy
 from email.parser import BytesParser
 from langchain_openai import ChatOpenAI
+from utils.llm_utils import create_llm
 
-load_dotenv()
+
 st.set_page_config(page_title="Email Intelligence Agent (Barebones)", layout="centered")
 st.title("Email Intelligence Agent — Barebones Starter")
 
@@ -20,7 +28,12 @@ with st.sidebar:
 
 tab1, tab2 = st.tabs(["📥 Load & Classify", "📊 Results"])
 
-llm = ChatOpenAI(model=os.getenv("LLM_MODEL","gpt-5"), temperature=0.3)
+try:
+    llm = create_llm()
+    st.success("LLM initialized successfully!")
+except Exception as e:
+    st.error(f"LLM initialization failed: {e}")
+    st.stop()
 
 if "corpus" not in st.session_state:
     st.session_state["corpus"] = []

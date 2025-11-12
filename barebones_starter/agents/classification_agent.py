@@ -1,4 +1,4 @@
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 PROMPT = PromptTemplate.from_template(
     """You are an expert email triage assistant.
