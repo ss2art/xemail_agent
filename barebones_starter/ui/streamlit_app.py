@@ -6,12 +6,11 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # --- Standard Imports
-import os, pandas as pd, streamlit as st
+import os, pandas as pd, streamlit as st, threading, time
 from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
 from email import policy
 from email.parser import BytesParser
-from langchain_openai import ChatOpenAI
 from utils.llm_utils import create_llm
 
 
@@ -25,6 +24,27 @@ with st.sidebar:
     st.header("Config")
     st.caption("Set your OPENAI_API_KEY in a local .env file")
     st.write(f"Guardrail: **{os.getenv('ENABLE_GUARDRAIL','True')}**")
+    st.markdown("---")
+    # Quit control (two-step confirmation)
+    if "quit_requested" not in st.session_state:
+        st.session_state["quit_requested"] = False
+
+    if st.button("Request quit"):
+        st.session_state["quit_requested"] = True
+
+    if st.session_state.get("quit_requested"):
+        st.warning("Click 'Confirm quit' to stop the Streamlit server.")
+        if st.button("Confirm quit"):
+            st.info("Shutting down the app shortly...")
+            def _delayed_exit(delay=1.0):
+                time.sleep(delay)
+                # Use os._exit to ensure the Streamlit process stops cross-platform
+                try:
+                    os._exit(0)
+                except Exception:
+                    pass
+
+            threading.Thread(target=_delayed_exit, args=(1.0,), daemon=True).start()
 
 tab1, tab2 = st.tabs(["📥 Load & Classify", "📊 Results"])
 
@@ -59,18 +79,3 @@ with tab1:
             results = process_batch(llm, data)
             st.session_state["results"] = results
             st.success(f"Processed {len(results)} emails.")
-
-with tab2:
-    st.subheader("Results")
-    results = st.session_state.get("results", [])
-    if results:
-        df = pd.DataFrame([{
-            "subject": d.get("subject",""),
-            "sender": d.get("from",""),
-            "date": d.get("date",""),
-            "category": d.get("category",""),
-            "guardrail": d.get("guardrail",{}).get("status",""),
-        } for d in results])
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("No results yet.")

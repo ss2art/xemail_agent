@@ -4,22 +4,8 @@ from langchain_openai import ChatOpenAI
 
 
 class LLMAdapter:
-    """Wraps an LLM instance and provides a normalized callable interface.
-
-    The adapter will forward calls to the first-supported method in this order:
-    1. callable(llm) (the instance itself is callable)
-    2. llm.predict
-    3. llm.invoke
-    4. llm.transform
-    5. llm.generate (best-effort)
-
-    It also forwards attribute access to the underlying llm for other uses.
-    """
-
     def __init__(self, llm: Any):
         self._llm = llm
-
-        # Resolve preferred invocation method
         if callable(llm):
             self._method = "callable"
         elif hasattr(llm, "predict"):
@@ -34,18 +20,13 @@ class LLMAdapter:
             self._method = None
 
     def __call__(self, prompt_or_messages, **kwargs):
-        """Call the LLM using the resolved method. Accepts either a string prompt
-        or a list/sequence of messages (as expected by some LangChain interfaces).
-        """
         if self._method == "callable":
             return self._llm(prompt_or_messages, **kwargs)
         if self._method == "predict":
             return self._llm.predict(prompt_or_messages, **kwargs)
         if self._method == "invoke":
-            # Some integrations expect a specific structure (e.g., a string or a list).
             return self._llm.invoke(prompt_or_messages, **kwargs)
         if self._method == "transform":
-            # transform often returns a generator/iterator — materialize if single result
             res = self._llm.transform(prompt_or_messages, **kwargs)
             try:
                 return next(res)
@@ -54,7 +35,6 @@ class LLMAdapter:
             except StopIteration:
                 return None
         if self._method == "generate":
-            # Best-effort: many generate() implementations expect message objects.
             try:
                 return self._llm.generate(prompt_or_messages, **kwargs)
             except Exception as e:
@@ -63,31 +43,23 @@ class LLMAdapter:
         raise RuntimeError("No supported invocation method found on LLM instance")
 
     def __getattr__(self, name: str):
-        # Forward attribute access to the wrapped LLM
         return getattr(self._llm, name)
 
 
 def create_llm():
+    """Safely create an OpenAI chat model, auto-retry without unsupported params."""
     model_name = os.getenv("LLM_MODEL", "gpt-4o-mini")
     temperature = 0.3
-
-    restricted_models = ["o1", "4.1", "reasoning", "gpt-5"]
-
     try:
-        if any(x in model_name for x in restricted_models):
-            llm = ChatOpenAI(model_name=model_name)
-        else:
-            llm = ChatOpenAI(model_name=model_name, temperature=temperature)
-    except TypeError as e:
-        if "proxies" in str(e):
-            print("⚠️ 'proxies' argument no longer supported. Removing and retrying.")
-            llm = ChatOpenAI(model_name=model_name)
-        else:
-            raise
+        llm = ChatOpenAI(model_name=model_name, temperature=temperature)
     except Exception as e:
-        print(f"❌ Unexpected error while creating LLM: {e}")
-        raise
-
+        msg = str(e).lower()
+        if "temperature" in msg or "unsupported_value" in msg:
+            print(f"⚠️ Model '{model_name}' does not support temperature. Retrying with defaults.")
+            llm = ChatOpenAI(model_name=model_name)
+        else:
+            print(f"❌ Unexpected error while creating LLM: {e}")
+            raise
     adapter = LLMAdapter(llm)
     print(f"✅ LLM initialized: {model_name} (adapter method={adapter._method})")
     return adapter

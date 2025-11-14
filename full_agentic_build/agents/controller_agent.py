@@ -4,6 +4,7 @@ from .guardrail_agent import validate_email
 from .classification_agent import classify_email
 from .temporal_agent import detect_expired
 from .subscription_agent import detect_subscription
+from .parsing_agent import extract_text
 from .semantic_agent import index_documents
 
 ENABLE_GUARDRAIL = os.getenv("ENABLE_GUARDRAIL", "True").lower() == "true"
@@ -16,20 +17,18 @@ def process_batch(llm, vectorstore, items: List[Dict]) -> List[Dict]:
         if ENABLE_GUARDRAIL:
             guard = validate_email(it)
             if guard["status"] == "REJECTED":
-                it["category"] = "Rejected"
-                it["guardrail"] = guard
+                it.update({"guardrail": guard, "category": "Rejected", "temporal": {}, "subscription": {}})
                 results.append(it)
                 continue
-
-        text = it.get("text", "")
-        category = classify_email(llm, text)
-        temporal = detect_expired(llm, text)
-        subs = detect_subscription(llm, text)
-
-        enriched = {**it, "category": category, "temporal": temporal, "subscription": subs, "guardrail": guard}
+        text = it.get("text") or extract_text(it.get("raw",""))
+        category = classify_email(llm, text) if text else "Other"
+        temporal = detect_expired(llm, text) if text else {"status":"UNKNOWN","evidence":"no text"}
+        subscription = detect_subscription(llm, text) if text else {"is_subscription":False,"vendor":None,"has_unsubscribe":False}
+        enriched = {**it, "text": text, "category": category, "temporal": temporal, "subscription": subscription, "guardrail": guard}
         results.append(enriched)
-        docs_for_index.append({"content": text, "meta": {"category": category, "path": it.get("path", "")}})
-
-    if docs_for_index:
+        docs_for_index.append({"content": text, "meta": {"subject": it.get("subject",""), "from": it.get("from",""), "category": category}})
+    try:
         index_documents(vectorstore, docs_for_index)
+    except Exception as e:
+        print("Indexing error:", e)
     return results

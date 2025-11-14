@@ -1,9 +1,9 @@
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 PROMPT = PromptTemplate.from_template(
     """You are an expert email triage assistant.
 Categorize the email into ONE of the following high-level classes:
-[Job, Marketing, Subscription, Personal, Finance, Newsletter, Receipt/Bill, Other]
+[Job, Marketing, Subscription, Personal, Finance, Newsletter, Receipt/Bill, Phishing, Other]
 
 Return only the single class label.
 
@@ -13,5 +13,9 @@ Email:
 )
 
 def classify_email(llm, email_text: str) -> str:
-    resp = llm.invoke(PROMPT.format(email_text=email_text))
-    return resp.content.strip()
+    try:
+        resp = llm.invoke(PROMPT.format(email_text=email_text))
+    except Exception:
+        resp = llm.invoke(PROMPT.format(email_text=email_text[:12000]))
+    text = getattr(resp, "content", str(resp)).strip()
+    return text.splitlines()[0].strip()

@@ -11,11 +11,11 @@ def load_corpus() -> List[Dict[str, Any]]:
     with open(EMAIL_JSON, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def save_corpus(items: List[Dict[str, Any]]):
+def save_corpus(items: List[Dict,]):
     with open(EMAIL_JSON, "w", encoding="utf-8") as f:
-        json.dump(items, f, indent=2)
+        json.dump(items, f, ensure_ascii=False, indent=2)
 
-def add_items(new_items: List[Dict[str, Any]]):
+def add_items(new_items: List[Dict]):
     data = load_corpus()
     data.extend(new_items)
     save_corpus(data)

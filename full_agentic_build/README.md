@@ -1,31 +1,29 @@
-# Full Agentic Build (LangChain + GPT‑5 + Chroma)
+# Full Agentic Build — v4
 
-**Features**
-- 8 agents (ingestion, guardrail, parsing, classification, temporal, subscription, semantic, discovery).
-- Chroma vector store for semantic search and topic memory.
-- Streamlit dashboard with tabs for Load, Classify, Search, Results.
-- Docker + Compose for deployment.
+Improvements:
+- Cross‑platform imports fix
+- Explicit `.env` loading
+- Safe LLM init via `utils/llm_utils.create_llm()` with temperature fallback
+- Requirements pinned to LangChain 0.2.x family (stable with `PromptTemplate`)
+- Modular agents + Chroma semantic search
+- Docker support
 
-## Run (Windows 11)
+## Quick Start (Windows)
 ```powershell
 copy .env.example .env
+# edit .env to add OPENAI_API_KEY
 python -m venv .venv
-.venv\Scripts\activate
+. .\.venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
-streamlit run ui/streamlit_app.py
+streamlit run ui\streamlit_app.py
 ```
 
 ## Docker
 ```powershell
 docker compose up --build
 ```
-Open: http://localhost:8501
 
-## Deployment
-- **Hugging Face Spaces (Docker Space)**: push this folder with Dockerfile.
-- **AWS App Runner**: build & push image to ECR, point App Runner to it.
-
-## Config
-- `.env`: `OPENAI_API_KEY`, `ENABLE_GUARDRAIL`, `LLM_MODEL`, `EMBEDDING_MODEL`.
-- Vector data persists in `data/vectorstore`.
+## Notes
+- Place `.eml` files in a folder and point the UI to that folder under **Load Emails**.
+- Vector index persists under `data/vectorstore`.
