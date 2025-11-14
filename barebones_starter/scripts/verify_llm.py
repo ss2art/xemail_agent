@@ -57,7 +57,12 @@ def try_predict(obj):
 def try_generate(obj):
     try:
         # try using message-based generate if available
-        from langchain.schema import HumanMessage
+        try:
+            from langchain.schema import HumanMessage
+        except Exception:
+            print('\n⚠️ langchain.schema.HumanMessage not available; skipping generate() test')
+            return False
+
         if hasattr(obj, 'generate'):
             # many LangChain chat models expect a list of lists of messages
             msgs = [[HumanMessage(content=prompt)]]
