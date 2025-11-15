@@ -1,5 +1,11 @@
 import os
-from langchain.embeddings import OpenAIEmbeddings
+try:
+    # Preferred: langchain exposes embeddings in some distributions
+    from langchain.embeddings import OpenAIEmbeddings  # type: ignore
+except Exception:
+    # Fallback to the integration package used in this repo's venv
+    from langchain_openai import OpenAIEmbeddings  # type: ignore
+
 from langchain.vectorstores import Chroma
 
 def get_embeddings():
