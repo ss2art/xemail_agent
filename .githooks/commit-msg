@@ -1,0 +1,16 @@
+#!/bin/sh
+# Commit-msg hook to enforce commit messages start with "Issue #1:"
+MSG_FILE="$1"
+
+if [ -z "$MSG_FILE" ]; then
+  echo "commit-msg hook: no commit message file provided" >&2
+  exit 1
+fi
+
+if grep -qE "^Issue #1:" "$MSG_FILE"; then
+  exit 0
+else
+  echo "ERROR: Commit message must start with 'Issue #1:'" >&2
+  echo "Please prefix the commit with 'Issue #1:' and try again." >&2
+  exit 1
+fi
