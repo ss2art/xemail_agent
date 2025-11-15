@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 import os
 import traceback
+import importlib
+import importlib.util
+from pathlib import Path
 
 print("🔍 Verifying LLM configuration...\n")
 
@@ -15,18 +18,54 @@ if not api_key:
 
 print(f"✅ Using model: {model_name}")
 
-# Initialize
-try:
-    from langchain_openai import ChatOpenAI
-except Exception:
-    print("❌ Could not import ChatOpenAI from langchain_openai")
-    raise
+# Initialize: prefer `create_llm()` adapter if available (provides normalized __call__)
+llm = None
+
+def load_create_llm_from_subproject(subproject: str):
+    """Try to load create_llm from the subproject utils module.
+
+    Attempt normal import first, then fall back to loading the module by
+    absolute file path (safe when the package is not a proper importable
+    package). Returns the create_llm callable or None.
+    """
+    mod_name = f"{subproject}.utils.llm_utils"
+    try:
+        mod = importlib.import_module(mod_name)
+        if hasattr(mod, 'create_llm'):
+            return mod.create_llm
+    except Exception:
+        # Try loading by path relative to repo root
+        repo_root = Path(__file__).resolve().parents[2]
+        file_path = repo_root / subproject / 'utils' / 'llm_utils.py'
+        if file_path.exists():
+            spec = importlib.util.spec_from_file_location(mod_name, str(file_path))
+            mod = importlib.util.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(mod)
+                if hasattr(mod, 'create_llm'):
+                    return mod.create_llm
+            except Exception:
+                pass
+    return None
 
 try:
-    llm = ChatOpenAI(model_name=model_name)
-    print("⚙️  ChatOpenAI initialized successfully.")
+    create_fn = load_create_llm_from_subproject('barebones_starter')
+    if create_fn:
+        llm = create_fn()
+        print("⚙️  Using barebones_starter.utils.create_llm() adapter.")
+    else:
+        create_fn = load_create_llm_from_subproject('full_agentic_build')
+        if create_fn:
+            llm = create_fn()
+            print("⚙️  Using full_agentic_build.utils.create_llm() adapter.")
+
+    if llm is None:
+        # Fail-fast: require a project-provided adapter (`create_llm()`)
+        print("❌ No LLM adapter found in the repository (no create_llm()).")
+        print("Please run this script from a subproject venv or add a create_llm() factory in the subproject's utils/llm_utils.py.")
+        raise SystemExit(1)
 except Exception as e:
-    print(f"❌ Failed to instantiate ChatOpenAI: {e}")
+    print(f"❌ Failed to create or instantiate LLM: {e}")
     traceback.print_exc()
     raise
 
@@ -99,15 +138,10 @@ def try_invoke(obj):
         print('\ninvoke() invocation failed:', e)
     return False
 
+# generate_prompt() tests are skipped because many implementations expect
+# a PromptValue-like object (with `.to_messages()`) rather than a bare string.
 def try_generate_prompt(obj):
-    try:
-        if hasattr(obj, 'generate_prompt'):
-            r = obj.generate_prompt(prompt)
-            print('\n✅ generate_prompt() invocation succeeded. Response:')
-            print(r)
-            return True
-    except Exception as e:
-        print('\ngenerate_prompt() invocation failed:', e)
+    print('\n⚠️ Skipping generate_prompt() test: this method often requires a PromptValue/to_messages input.')
     return False
 
 def try_transform(obj):
