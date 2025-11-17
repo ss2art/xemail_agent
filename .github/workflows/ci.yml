@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install ruff (lint)
+        run: python -m pip install ruff
+
+      - name: Run ruff lint
+        run: |
+          echo 'Running ruff...'
+          ruff check .
+
+      - name: Run llm smoke tests for subprojects
+        run: |
+          set -e
+          # For each subproject, create a local venv at .venv, install its requirements
+          for sp in barebones_starter full_agentic_build; do
+            if [ -f "$sp/requirements.txt" ]; then
+              python -m venv "$sp/.venv"
+              # shellcheck disable=SC1091
+              . "$sp/.venv/bin/activate"
+              pip install --upgrade pip
+              pip install -r "$sp/requirements.txt"
+              # run the smoke test which is safe when OPENAI_API_KEY is not set (it will skip remote calls)
+              python scripts/llm_smoke.py --subproject "$sp"
+            else
+              echo "No requirements.txt for $sp; skipping venv setup"
+            fi
+          done

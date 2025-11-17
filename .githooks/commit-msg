@@ -1,5 +1,14 @@
 #!/bin/sh
-# Commit-msg hook to enforce commit messages start with "Issue #1:"
+# Commit-msg hook to enforce commit messages include an issue identifier.
+# Accepts formats like:
+#   Issue #123: short summary
+#   xm-123: short summary
+#   Issue xm-123: short summary
+#
+# Note: GitHub issue numbers are numeric (e.g. #123). The letter-prefix form
+# (e.g. xm-123) is an internal identifier you can use in commit messages; it
+# does not change GitHub issue numbering.
+
 MSG_FILE="$1"
 
 if [ -z "$MSG_FILE" ]; then
@@ -7,10 +16,17 @@ if [ -z "$MSG_FILE" ]; then
   exit 1
 fi
 
-if grep -qE "^Issue #1:" "$MSG_FILE"; then
+# Match either:
+#  - optional leading 'Issue ' (case-insensitive) followed by #<digits> and a colon
+#  - optional leading 'Issue ' followed by <letters>-<digits> and a colon
+# Examples matched: "Issue #123:", "#123:", "xm-123:", "Issue xm-123:"
+if grep -qEi '^([Ii]ssue[[:space:]]+)?(#[0-9]+):' "$MSG_FILE"; then
   exit 0
 else
-  echo "ERROR: Commit message must start with 'Issue #1:'" >&2
-  echo "Please prefix the commit with 'Issue #1:' and try again." >&2
+  echo "ERROR: Commit message must start with an issue identifier." >&2
+  echo "Allowed formats (examples):" >&2
+  echo "  Issue #123: short summary" >&2
+  echo "  #123: short summary" >&2
+  echo "Please prefix the commit message accordingly and try again." >&2
   exit 1
 fi
