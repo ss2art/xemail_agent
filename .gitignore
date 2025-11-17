@@ -209,3 +209,13 @@ __marimo__/
 
 # Project-local issue definitions (do not track)
 /issues.json
+
+# Local dev artifacts
+.continue/
+.vscode/
+
+# Vector store artifacts
+full_agentic_build/data/vectorstore/
+
+# Data artifacts
+full_agentic_build/data/*.json

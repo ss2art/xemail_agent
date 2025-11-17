@@ -9,7 +9,7 @@ if os.path.exists(env_path):
 
 import streamlit as st
 import pandas as pd
-from streamlit.components.v1 import html
+
 from utils.llm_utils import create_llm
 from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
@@ -17,6 +17,9 @@ from agents.semantic_agent import search
 from agents.discovery_agent import remember_topic
 from services.embeddings_service import get_vectorstore
 from services.storage_service import load_corpus, save_corpus, add_items
+
+# UI descriptor for the entire set of read emails (do not change function names)
+COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
 
 st.set_page_config(page_title="Email Intelligence Agent — Full Build v4", layout="wide")
 st.title("📧 Email Intelligence Agent — Full Build v4")
@@ -30,38 +33,27 @@ with st.sidebar:
 
     if "quit_requested" not in st.session_state:
         st.session_state["quit_requested"] = False
-    if "close_tab" not in st.session_state:
-        st.session_state["close_tab"] = False
 
+    # Single-click quit reveals controls immediately
+    clicked_quit = False
     if not st.session_state["quit_requested"]:
-        if st.button("Quit"):
+        clicked_quit = st.button("Quit")
+        if clicked_quit:
             st.session_state["quit_requested"] = True
-    else:
-        st.warning("To quit: optionally close this tab, then stop the server.")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Close this tab"):
-                st.session_state["close_tab"] = True
-        with col2:
-            if st.button("Stop server"):
-                st.info("Shutting down the app shortly...")
-                def _delayed_exit(delay=1.0):
-                    import time, os
-                    time.sleep(delay)
-                    try:
-                        os._exit(0)
-                    except Exception:
-                        pass
-                import threading
-                threading.Thread(target=_delayed_exit, args=(1.0,), daemon=True).start()
 
-        if st.session_state.get("close_tab"):
-            html("""
-            <script>
-                window.open('', '_self');
-                window.close();
-            </script>
-            """)
+    if st.session_state["quit_requested"]:
+        st.warning("To quit: please close this browser tab/window. To stop the backend server, click 'Stop server' below.")
+        if st.button("Stop server"):
+            st.info("Shutting down the app shortly...")
+            def _delayed_exit(delay=1.0):
+                import time, os
+                time.sleep(delay)
+                try:
+                    os._exit(0)
+                except Exception:
+                    pass
+            import threading
+            threading.Thread(target=_delayed_exit, args=(1.0,), daemon=True).start()
 
 # Initialize LLM & Vectorstore
 try:
@@ -83,16 +75,16 @@ with tab1:
         items = load_eml_folder(folder)
         if items:
             add_items(items)
-            st.success(f"Loaded {len(items)} emails into corpus.")
+            st.success(f"Loaded {len(items)} emails into the {COLLECTION_LABEL}.")
         else:
             st.warning("No .eml files found.")
 
 with tab2:
     st.subheader("Run Classification Pipeline")
-    if st.button("Process Corpus"):
+    if st.button(f"Process {COLLECTION_LABEL}"):
         data = load_corpus()
         if not data:
-            st.warning("Corpus is empty. Load emails first.")
+            st.warning(f"{COLLECTION_LABEL} is empty. Load emails first.")
         else:
             results = process_batch(llm, vectorstore, data)
             save_corpus(results)
@@ -112,7 +104,7 @@ with tab3:
             st.info("No hits yet. Try classifying first.")
 
 with tab4:
-    st.subheader("Corpus Overview")
+    st.subheader(f"{COLLECTION_LABEL} Overview")
     data = load_corpus()
     if data:
         df = pd.DataFrame([{
@@ -121,25 +113,10 @@ with tab4:
             "date": d.get("date",""),
             "category": d.get("category",""),
             "guardrail": d.get("guardrail",{}).get("status",""),
+            "guardrail_reason": ", ".join(d.get("guardrail",{}).get("notes", [])),
             "expired": d.get("temporal",{}).get("status",""),
             "subscription": d.get("subscription",{}).get("is_subscription", False),
         } for d in data])
-        st.dataframe(df, use_container_width=True)
-
-        # Show guardrail reasons for failures/warnings
-        failed = [d for d in data if d.get("guardrail",{}).get("status") in ("REJECTED","WARN")]
-        if failed:
-            st.markdown("---")
-            st.subheader("Guardrail notes")
-            for d in failed:
-                subj = d.get("subject","(no subject)")
-                status = d.get("guardrail",{}).get("status")
-                notes = d.get("guardrail",{}).get("notes", [])
-                with st.expander(f"{status}: {subj}"):
-                    if notes:
-                        for n in notes:
-                            st.write(f"- {n}")
-                    else:
-                        st.write("(no notes)")
+        st.dataframe(df, width='stretch')
     else:
         st.info("No data yet.")
