@@ -1,4 +1,69 @@
 [
-  {"title": "Implement Guardrail Agent", "body": "Validate incoming email structure and reject malformed or empty messages.", "labels": ["backend","guardrail","LLM"], "milestone": "Phase 1"},
-  {"title": "Integrate LLM Classifier", "body": "Connect GPT-5 model for topic classification and spam/job/newsletter categorization.", "labels": ["LLM","core"], "milestone": "Phase 1"}
+  {
+    "title": "Quit control: Close browser tab and stop Streamlit server (Barebones + Full)",
+    "body": "Implement a consistent quit UX that: (1) uses a two-step confirmation, (2) attempts to close the current browser tab via a small JS snippet (where the browser allows), and (3) stops the Streamlit server process cross-platform (Windows/PowerShell friendly) using a safe delayed os._exit(0).\n\nAcceptance criteria:\n- Barebones: Replace current quit with two buttons: 'Close this tab' and 'Stop server'; document that some browsers may block window.close for non-script-opened tabs.\n- Full build: Add the same quit controls in the sidebar.\n- Works on Windows (Chrome/Edge/Firefox) without requiring Ctrl+C in the terminal.\n- Displays clear instructions if the tab cannot be closed automatically.\n- Tested locally; docs updated in README.",
+    "labels": ["UI", "streamlit", "windows"],
+    "milestone": "Phase 1"
+  },
+  {
+    "title": "Show guardrail failure reasons in UI (Barebones + Full)",
+    "body": "Indicate in the UI why an email fails guardrail checks. Show guardrail status and notes per email in the Results/Overview tabs, with an expandable list of notes (e.g., 'Missing subject', 'Empty email body'). Highlight REJECTED and WARN statuses.\n\nAcceptance criteria:\n- Barebones: Results tab lists guardrail status and an expander per item for notes.\n- Full: Corpus Overview shows guardrail status; add a section listing WARN/REJECTED with notes.\n- Ensure notes come from guardrail_agent outputs.",
+    "labels": ["UI", "guardrail"],
+    "milestone": "Phase 1"
+  },
+  {
+    "title": "Fix corrupted requirements.txt and add missing runtime dependencies (Full Build)",
+    "body": "requirements.txt appears to contain non-text/binary artifacts and is missing app runtime deps. Recreate as clean text and include minimal pinned deps: langchain==1.0.5, langchain-core==1.0.4, langchain-community==0.4.1, langchain-openai==1.0.2, openai==2.8.0, chromadb==1.3.4, beautifulsoup4==4.12.3, python-dotenv, streamlit, pandas.\n\nAcceptance: fresh venv pip install -r requirements.txt completes, streamlit app launches.",
+    "labels": ["infra", "packaging"],
+    "milestone": "Phase 1"
+  },
+  {
+    "title": "Update ChatOpenAI initialization to use 'model' param and temperature fallback",
+    "body": "Update full_agentic_build/utils/llm_utils.py to use ChatOpenAI(model=...) (newer API), with safe handling when temperature is unsupported. Keep LLMAdapter.\n\nAcceptance: create_llm() works for gpt-4o-mini and other models; logs fallback only when needed.",
+    "labels": ["LLM", "backend"],
+    "milestone": "Phase 1"
+  },
+  {
+    "title": "README corrections and operational docs (Full Build)",
+    "body": "Correct example LLM model (avoid 'gpt-5'); document required env vars; add notes about quitting the app and browser limitations; include instructions for Windows PowerShell and Docker.",
+    "labels": ["docs"],
+    "milestone": "Phase 1"
+  },
+  {
+    "title": "Add Clear Corpus and Reprocess controls to UI",
+    "body": "Provide buttons to clear corpus, re-run processing selectively, and download results CSV in both Barebones and Full builds.",
+    "labels": ["UI", "feature"],
+    "milestone": "Phase 2"
+  },
+  {
+    "title": "Add retries/backoff and JSON parsing resilience for LLM agents",
+    "body": "Wrap temporal/subscription agent calls with retries (exponential backoff), timeouts, and robust JSON parsing with schema validation and fallbacks.",
+    "labels": ["LLM", "robustness"],
+    "milestone": "Phase 2"
+  },
+  {
+    "title": "Stop committing vectorstore artifacts; add .gitignore and migration",
+    "body": "Add data/vectorstore to .gitignore; provide a cleanup script; keep a small synthetic dataset under data/sample_emails only.",
+    "labels": ["infra", "data"],
+    "milestone": "Phase 2"
+  },
+  {
+    "title": "Add unit tests for agents and services",
+    "body": "Tests for parsing_agent, guardrail_agent, classification_agent (prompt IO mocked), temporal/subscription JSON parsing, and semantic search indexing.",
+    "labels": ["tests"],
+    "milestone": "Phase 2"
+  },
+  {
+    "title": "Expose model/embedding configuration in UI and support alt providers",
+    "body": "Allow selecting chat and embedding models from the UI (env defaults), and document how to switch to non-OpenAI embeddings if desired.",
+    "labels": ["feature", "config"],
+    "milestone": "Phase 2"
+  },
+  {
+    "title": "Docker run docs and compose validation",
+    "body": "Validate docker-compose workflow with mounted data and .env, ensure Vectorstore persists, and document how to set OPENAI_API_KEY and quit the app from inside the container.",
+    "labels": ["docker", "docs"],
+    "milestone": "Phase 2"
+  }
 ]
+

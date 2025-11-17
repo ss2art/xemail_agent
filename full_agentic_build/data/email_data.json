@@ -44,10 +44,70 @@
     "date": "",
     "raw": "...",
     "text": "...",
-    "category": "Please provide the content of the email for categorization.",
+    "category": "Please provide the email content that you would like me to categorize.",
     "temporal": {
       "status": "UNKNOWN",
-      "evidence": "No specific promotions or offers provided in the email to assess their status."
+      "evidence": "No specific promotions or offers provided in the email content."
+    },
+    "subscription": {
+      "is_subscription": false,
+      "vendor": null,
+      "has_unsubscribe": false
+    },
+    "guardrail": {
+      "status": "OK",
+      "notes": []
+    }
+  },
+  {
+    "path": "./data/sample_emails\\job_offer.eml",
+    "subject": "Senior Data Engineer Opportunity",
+    "from": "recruiter@example.com",
+    "date": "",
+    "raw": "We'd love to talk...",
+    "text": "We'd love to talk...",
+    "category": "Other",
+    "temporal": {
+      "status": "UNKNOWN",
+      "evidence": "No specific promotions or offers mentioned in the email."
+    },
+    "subscription": {
+      "is_subscription": false,
+      "vendor": null,
+      "has_unsubscribe": false
+    },
+    "guardrail": {
+      "status": "OK",
+      "notes": []
+    }
+  },
+  {
+    "path": "./data/sample_emails\\newsletter.eml",
+    "subject": "",
+    "from": "",
+    "date": "",
+    "raw": "",
+    "guardrail": {
+      "status": "REJECTED",
+      "notes": [
+        "Empty email body."
+      ]
+    },
+    "category": "Rejected",
+    "temporal": {},
+    "subscription": {}
+  },
+  {
+    "path": "./data/sample_emails\\sale_promo.eml",
+    "subject": "FINAL HOURS! 40% OFF ends tonight",
+    "from": "deals@shop.example.com",
+    "date": "",
+    "raw": "...",
+    "text": "...",
+    "category": "Please provide the email content for categorization.",
+    "temporal": {
+      "status": "UNKNOWN",
+      "evidence": "No specific promotions or offers provided in the email."
     },
     "subscription": {
       "is_subscription": false,
