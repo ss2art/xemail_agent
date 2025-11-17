@@ -206,3 +206,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-local issue definitions (do not track)
+/issues.json
