@@ -214,8 +214,6 @@ __marimo__/
 .continue/
 .vscode/
 
-# Vector store artifacts
-full_agentic_build/data/vectorstore/
-
-# Data artifacts
-full_agentic_build/data/*.json
+# Ignore any folder named 'data' and all its contents anywhere in the repo
+data/
+**/data/

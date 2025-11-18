@@ -15,8 +15,8 @@ from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
 from agents.semantic_agent import search
 from agents.discovery_agent import remember_topic
-from services.embeddings_service import get_vectorstore
-from services.storage_service import load_corpus, save_corpus, add_items
+from services.embeddings_service import get_vectorstore, clear_vectorstore
+from services.storage_service import load_corpus, save_corpus, add_items, clear_corpus
 
 # UI descriptor for the entire set of read emails (do not change function names)
 COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
@@ -66,7 +66,8 @@ except Exception as e:
 vector_dir = os.getenv("VECTOR_DIR", "./data/vectorstore")
 vectorstore = get_vectorstore(vector_dir)
 
-tab1, tab2, tab3, tab4 = st.tabs(["📥 Load Emails", "🤖 Classify & Index", "🔎 Topic Search", "📊 Results"])
+# Tabs include a maintenance section for clearing data and vector store
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📥 Load Emails", "🤖 Classify & Index", "🔎 Topic Search", "📊 Results", "🧹 Maintenance"])
 
 with tab1:
     st.subheader("Load .eml samples")
@@ -120,3 +121,21 @@ with tab4:
         st.dataframe(df, width='stretch')
     else:
         st.info("No data yet.")
+
+with tab5:
+    st.subheader("Maintenance")
+    st.caption("Clear stored emails and vector index. This cannot be undone.")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Clear Emails"):
+            clear_corpus()
+            st.success(f"Cleared {COLLECTION_LABEL} data file.")
+    with c2:
+        if st.button("Clear Vector Store"):
+            clear_vectorstore(vector_dir)
+            # Reinitialize the vectorstore instance to reflect cleared state
+            try:
+                globals()["vectorstore"] = get_vectorstore(vector_dir)
+                st.success("Vector store cleared and reinitialized.")
+            except Exception as e:
+                st.warning(f"Vector store cleared, but reinit failed: {e}")

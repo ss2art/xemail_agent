@@ -19,3 +19,12 @@ def add_items(new_items: List[Dict]):
     data = load_corpus()
     data.extend(new_items)
     save_corpus(data)
+
+
+def clear_corpus():
+    """Remove the saved email corpus file if present."""
+    if os.path.exists(EMAIL_JSON):
+        try:
+            os.remove(EMAIL_JSON)
+        except Exception:
+            pass
