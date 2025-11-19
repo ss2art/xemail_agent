@@ -9,6 +9,7 @@ if os.path.exists(env_path):
 
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
 from utils.llm_utils import create_llm
 from agents.ingestion_agent import load_eml_folder
@@ -29,6 +30,53 @@ with st.sidebar:
     st.header("Config")
     st.caption("Set your OPENAI_API_KEY in a local .env file")
     st.write(f"Guardrail: **{os.getenv('ENABLE_GUARDRAIL','True')}**")
+    st.markdown("---")
+
+    # Stats: Emails read, Storage size (vector store), IndexSize, LastProcessed
+    def _human_bytes(n: int) -> str:
+        units = ["B", "KB", "MB", "GB", "TB"]
+        s = float(n)
+        for u in units:
+            if s < 1024.0:
+                return f"{s:.1f} {u}"
+            s /= 1024.0
+        return f"{s:.1f} PB"
+
+    def _dir_size(p: str) -> int:
+        if not p or not os.path.exists(p):
+            return 0
+        total = 0
+        for root, _, files in os.walk(p):
+            for f in files:
+                fp = os.path.join(root, f)
+                try:
+                    total += os.path.getsize(fp)
+                except OSError:
+                    pass
+        return total
+
+    def _index_size(vs) -> int:
+        try:
+            return int(vs._collection.count())  # type: ignore[attr-defined]
+        except Exception:
+            try:
+                data = vs._collection.get(include=["metadatas"])  # type: ignore[attr-defined]
+                return len(data.get("ids", []))
+            except Exception:
+                return 0
+
+    email_count = len(load_corpus())
+    vs_dir = os.getenv("VECTOR_DIR", "./data/vectorstore")
+    storage_size = _dir_size(vs_dir)
+    # Use a lightweight vectorstore instance just for stats
+    try:
+        _vs_stats = get_vectorstore(vs_dir)
+        index_size = _index_size(_vs_stats)
+    except Exception:
+        index_size = 0
+
+    last_proc = st.session_state.get("last_processed_at") or "—"
+
     st.markdown("---")
 
     if "quit_requested" not in st.session_state:
@@ -77,6 +125,7 @@ with tab1:
         if items:
             add_items(items)
             st.success(f"Loaded {len(items)} emails into the {COLLECTION_LABEL}.")
+            st.rerun()
         else:
             st.warning("No .eml files found.")
 
@@ -89,7 +138,9 @@ with tab2:
         else:
             results = process_batch(llm, vectorstore, data)
             save_corpus(results)
+            st.session_state["last_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             st.success(f"Processed {len(results)} emails.")
+            st.rerun()
 
 with tab3:
     st.subheader("Semantic Topic Search")
@@ -125,17 +176,106 @@ with tab4:
 with tab5:
     st.subheader("Maintenance")
     st.caption("Clear stored emails and vector index. This cannot be undone.")
+
+    # Stats (smaller font) above actions
+    def _human_bytes2(n: int) -> str:
+        units = ["B", "KB", "MB", "GB", "TB"]
+        s = float(n)
+        for u in units:
+            if s < 1024.0:
+                return f"{s:.1f} {u}"
+            s /= 1024.0
+        return f"{s:.1f} PB"
+
+    def _dir_size2(p: str) -> int:
+        if not p or not os.path.exists(p):
+            return 0
+        total = 0
+        for root, _, files in os.walk(p):
+            for f in files:
+                fp = os.path.join(root, f)
+                try:
+                    total += os.path.getsize(fp)
+                except OSError:
+                    pass
+        return total
+
+    def _index_size2(vs) -> int:
+        try:
+            return int(vs._collection.count())  # type: ignore[attr-defined]
+        except Exception:
+            try:
+                data = vs._collection.get(include=["metadatas"])  # type: ignore[attr-defined]
+                return len(data.get("ids", []))
+            except Exception:
+                return 0
+
+    email_count2 = len(load_corpus())
+    vs_dir2 = os.getenv("VECTOR_DIR", "./data/vectorstore")
+    storage_size2 = _dir_size2(vs_dir2)
+    try:
+        _vs_stats2 = get_vectorstore(vs_dir2)
+        index_size2 = _index_size2(_vs_stats2)
+    except Exception:
+        index_size2 = 0
+    last_proc2 = st.session_state.get("last_processed_at") or "—"
+
+    st.markdown("#### Stats")
+    st.caption(f"Emails: {email_count2}")
+    st.caption(f"Storage Size: {_human_bytes2(storage_size2)}")
+    st.caption(f"Index Size: {index_size2}")
+    st.caption(f"Last Processed: {last_proc2}")
+    if st.button("Refresh Stats"):
+        st.rerun()
+    st.markdown("---")
+
+    if "confirm_clear_emails" not in st.session_state:
+        st.session_state["confirm_clear_emails"] = False
+    if "confirm_clear_vector" not in st.session_state:
+        st.session_state["confirm_clear_vector"] = False
+
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("Clear Emails"):
-            clear_corpus()
-            st.success(f"Cleared {COLLECTION_LABEL} data file.")
+        if not st.session_state["confirm_clear_emails"]:
+            if st.button("Clear Emails"):
+                st.session_state["confirm_clear_emails"] = True
+                st.rerun()
+        else:
+            st.error("Confirm clearing emails. This cannot be undone.")
+            cc1, cc2 = st.columns(2)
+            with cc1:
+                if st.button("Confirm Clear Emails"):
+                    clear_corpus()
+                    st.session_state["last_processed_at"] = None
+                    st.session_state["confirm_clear_emails"] = False
+                    st.success(f"Cleared {COLLECTION_LABEL} data file.")
+                    st.rerun()
+            with cc2:
+                if st.button("Cancel"):
+                    st.session_state["confirm_clear_emails"] = False
+                    st.info("Cancelled.")
+                    st.rerun()
     with c2:
-        if st.button("Clear Vector Store"):
-            clear_vectorstore(vector_dir)
-            # Reinitialize the vectorstore instance to reflect cleared state
-            try:
-                globals()["vectorstore"] = get_vectorstore(vector_dir)
-                st.success("Vector store cleared and reinitialized.")
-            except Exception as e:
-                st.warning(f"Vector store cleared, but reinit failed: {e}")
+        if not st.session_state["confirm_clear_vector"]:
+            if st.button("Clear Vector Store"):
+                st.session_state["confirm_clear_vector"] = True
+                st.rerun()
+        else:
+            st.error("Confirm clearing vector store. This cannot be undone.")
+            vc1, vc2 = st.columns(2)
+            with vc1:
+                if st.button("Confirm Clear Vector Store"):
+                    current_vs = globals().get("vectorstore")
+                    clear_vectorstore(vector_dir, current_vs)
+                    try:
+                        globals()["vectorstore"] = get_vectorstore(vector_dir)
+                        st.success("Vector store cleared and reinitialized.")
+                    except Exception as e:
+                        st.warning(f"Vector store cleared, but reinit failed: {e}")
+                    st.session_state["confirm_clear_vector"] = False
+                    st.rerun()
+            with vc2:
+                if st.button("Cancel"):
+                    st.session_state["confirm_clear_vector"] = False
+                    st.info("Cancelled.")
+                    st.rerun()

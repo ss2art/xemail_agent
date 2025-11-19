@@ -8,8 +8,18 @@ os.makedirs(DATA_DIR, exist_ok=True)
 def load_corpus() -> List[Dict[str, Any]]:
     if not os.path.exists(EMAIL_JSON):
         return []
-    with open(EMAIL_JSON, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(EMAIL_JSON, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+        if not content:
+            return []
+        return json.loads(content)
+    except json.JSONDecodeError:
+        # Corrupt or partially written file; reset to a clean slate
+        clear_corpus()
+        return []
+    except Exception:
+        return []
 
 def save_corpus(items: List[Dict,]):
     with open(EMAIL_JSON, "w", encoding="utf-8") as f:

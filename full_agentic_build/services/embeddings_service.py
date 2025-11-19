@@ -26,9 +26,33 @@ def get_vectorstore(persist_directory: str = None):
     return Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
 
-def clear_vectorstore(persist_directory: str = None):
+def clear_vectorstore(persist_directory: str = None, vectorstore=None):
     """Remove all persisted vectorstore data and recreate the directory."""
     persist_directory = persist_directory or os.getenv("VECTOR_DIR", "./data/vectorstore")
+    persist_directory = os.path.abspath(persist_directory)
+
+    reset_done = False
+
+    # Try to drop the collection via the active vectorstore instance to close duckdb handles
+    if vectorstore is not None:
+        client = getattr(vectorstore, "_client", None)
+        if client is not None:
+            try:
+                client.reset()
+                reset_done = True
+            except Exception:
+                pass
+
+    # Fall back to resetting via a transient PersistentClient so stale handles are cleared too
+    if not reset_done:
+        try:
+            from chromadb import PersistentClient
+
+            PersistentClient(path=persist_directory).reset()
+            reset_done = True
+        except Exception:
+            pass
+
     if os.path.isdir(persist_directory):
         shutil.rmtree(persist_directory, ignore_errors=True)
     os.makedirs(persist_directory, exist_ok=True)
