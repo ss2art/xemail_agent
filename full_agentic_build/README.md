@@ -45,3 +45,7 @@ kept minimal and will be pulled in transitively.
 
 - Place `.eml` files in a folder and point the UI to that folder under **Load Emails**.
 - Vector index persists under `data/vectorstore`.
+- Run the Streamlit UI:
+  - Default: `streamlit run full_agentic_build/ui/streamlit_app.py`
+  - Debug (shows full EmailRecord JSON under previews): `streamlit run full_agentic_build/ui/streamlit_app.py -- --debug`
+  - With venv on Windows: `.venv\Scripts\streamlit run full_agentic_build/ui/streamlit_app.py`
