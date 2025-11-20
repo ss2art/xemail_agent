@@ -1,5 +1,8 @@
+import gc
 import os
 import shutil
+import time
+from typing import Any
 try:
     # Preferred embeddings adapter
     from langchain_openai import OpenAIEmbeddings
@@ -12,6 +15,12 @@ try:
 except Exception:
     # Fallback for environments without langchain-chroma installed
     from langchain_community.vectorstores import Chroma  # type: ignore
+
+# Used to fully tear down Chroma clients between resets
+try:  # pragma: no cover - best-effort cleanup on platforms like Windows
+    from chromadb.api.shared_system_client import SharedSystemClient
+except Exception:  # pragma: no cover
+    SharedSystemClient = None  # type: ignore
 
 
 def get_embeddings():
@@ -31,28 +40,56 @@ def clear_vectorstore(persist_directory: str = None, vectorstore=None):
     persist_directory = persist_directory or os.getenv("VECTOR_DIR", "./data/vectorstore")
     persist_directory = os.path.abspath(persist_directory)
 
-    reset_done = False
-
-    # Try to drop the collection via the active vectorstore instance to close duckdb handles
-    if vectorstore is not None:
-        client = getattr(vectorstore, "_client", None)
-        if client is not None:
-            try:
-                client.reset()
-                reset_done = True
-            except Exception:
-                pass
-
-    # Fall back to resetting via a transient PersistentClient so stale handles are cleared too
-    if not reset_done:
+    def _reset_client(client: Any):
+        """Best-effort shutdown to release file handles before deleting the directory."""
+        if client is None:
+            return
         try:
-            from chromadb import PersistentClient
-
-            PersistentClient(path=persist_directory).reset()
-            reset_done = True
+            client.reset()
+        except Exception:
+            pass
+        try:
+            db = getattr(client, "_db", None)
+            if db is not None and hasattr(db, "close"):
+                db.close()
+        except Exception:
+            pass
+        try:
+            # Avoid lingering handles inside HNSW/SQLite on Windows
+            system = getattr(client, "_system", None)
+            if system is not None and hasattr(system, "stop"):
+                system.stop()
+        except Exception:
+            pass
+        try:
+            # Clear cached systems so new clients don't reuse stale handles
+            if SharedSystemClient is not None:
+                # Stop any other cached systems as well
+                cache = getattr(SharedSystemClient, "_identifier_to_system", {}) or {}
+                for sys_obj in list(cache.values()):
+                    try:
+                        sys_obj.stop()
+                    except Exception:
+                        pass
+                SharedSystemClient.clear_system_cache()
         except Exception:
             pass
 
+    if vectorstore is not None:
+        client = getattr(vectorstore, "_client", None)
+        _reset_client(client)
+
     if os.path.isdir(persist_directory):
-        shutil.rmtree(persist_directory, ignore_errors=True)
+        last_error = None
+        for attempt in range(5):
+            try:
+                shutil.rmtree(persist_directory)
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                time.sleep(0.2 * (attempt + 1))
+                gc.collect()
+        if last_error is not None:
+            raise last_error
     os.makedirs(persist_directory, exist_ok=True)
