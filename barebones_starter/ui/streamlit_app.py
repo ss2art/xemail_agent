@@ -89,13 +89,13 @@ with tab1:
             st.warning("No .eml files found.")
 
         if st.button("Run Guardrail + Classification"):
-        data = st.session_state.get("corpus", [])
-        if not data:
-            st.warning("Load emails first.")
-        else:
-            results = process_batch(llm, data)
-            st.session_state["results"] = results
-            st.success(f"Processed {len(results)} emails.")
+            data = st.session_state.get("corpus", [])
+            if not data:
+                st.warning("Load emails first.")
+            else:
+                results = process_batch(llm, data)
+                st.session_state["results"] = results
+                st.success(f"Processed {len(results)} emails.")
 
 
 with tab2:

@@ -1,69 +1,138 @@
 [
   {
-    "title": "Quit control: Close browser tab and stop Streamlit server (Barebones + Full)",
-    "body": "Implement a consistent quit UX that: (1) uses a two-step confirmation, (2) attempts to close the current browser tab via a small JS snippet (where the browser allows), and (3) stops the Streamlit server process cross-platform (Windows/PowerShell friendly) using a safe delayed os._exit(0).\n\nAcceptance criteria:\n- Barebones: Replace current quit with two buttons: 'Close this tab' and 'Stop server'; document that some browsers may block window.close for non-script-opened tabs.\n- Full build: Add the same quit controls in the sidebar.\n- Works on Windows (Chrome/Edge/Firefox) without requiring Ctrl+C in the terminal.\n- Displays clear instructions if the tab cannot be closed automatically.\n- Tested locally; docs updated in README.",
-    "labels": ["UI", "streamlit", "windows"],
-    "milestone": "Phase 1"
+    "title": "Implement robust email parsing module for IMAP and .eml ingestion",
+    "body": "Create a safe and comprehensive email parser that extracts all metadata and content needed for the EmailRecord. The parser must gracefully handle malformed emails, missing fields, non-UTF8 content, attachments, multi-part MIME bodies, nested HTML, quoted replies, and potential security-sensitive content.\n\n**Acceptance Criteria:**\n- A new module (e.g., `services/email_parser.py`) parses raw RFC822 bytes into an EmailRecord.\n- Extracts headers, dates, sender/recipient lists, and structured attachment metadata.\n- Cleans HTML into text while stripping scripts, styles, trackers, and unsafe content.\n- Normalizes plain-text bodies and merges multipart segments.\n- Works identically for IMAP `RFC822` fetches and locally loaded `.eml` files.\n- Includes basic guardrails to prevent ingestion of extremely large files or clearly unsafe content.",
+    "labels": [
+      "enhancement",
+      "backend",
+      "LLM",
+      "guardrail",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "Show guardrail failure reasons in UI (Barebones + Full)",
-    "body": "Indicate in the UI why an email fails guardrail checks. Show guardrail status and notes per email in the Results/Overview tabs, with an expandable list of notes (e.g., 'Missing subject', 'Empty email body'). Highlight REJECTED and WARN statuses.\n\nAcceptance criteria:\n- Barebones: Results tab lists guardrail status and an expander per item for notes.\n- Full: Corpus Overview shows guardrail status; add a section listing WARN/REJECTED with notes.\n- Ensure notes come from guardrail_agent outputs.",
-    "labels": ["UI", "guardrail"],
-    "milestone": "Phase 1"
+    "title": "Add markdown conversion pipeline for cleaned email bodies",
+    "body": "Add a dedicated markdown converter that transforms parsed email content into a consistent and readable format suitable for LLM ingestion, indexing, search, and UI display. Markdown output should include a header block with metadata, followed by cleaned message content with unnecessary quoting and noise removed.\n\n**Acceptance Criteria:**\n- A module (e.g., `services/email_markdown.py`) produces markdown according to a defined template.\n- Metadata section includes From, To, Subject, Date, and Message-ID.\n- Body is cleaned for excessive quoting, repeated whitespace, HTML artifacts, and non-text MIME content.\n- Markdown output is validated to be safe for vectorization and display.\n- Integrated into the email ingestion pipeline so every EmailRecord includes `body_markdown`.",
+    "labels": [
+      "enhancement",
+      "LLM",
+      "core",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "Fix corrupted requirements.txt and add missing runtime dependencies (Full Build)",
-    "body": "requirements.txt appears to contain non-text/binary artifacts and is missing app runtime deps. Recreate as clean text and include minimal pinned deps: langchain==1.0.5, langchain-core==1.0.4, langchain-community==0.4.1, langchain-openai==1.0.2, openai==2.8.0, chromadb==1.3.4, beautifulsoup4==4.12.3, python-dotenv, streamlit, pandas.\n\nAcceptance: fresh venv pip install -r requirements.txt completes, streamlit app launches.",
-    "labels": ["infra", "packaging"],
-    "milestone": "Phase 1"
+    "title": "Integrate email parsing and markdown conversion into IMAP ingestion flow",
+    "body": "Extend the IMAP ingestion logic to incorporate the new parsing and markdown-generation modules. When reading from the mail server, the system should fetch the raw email bytes, build an EmailRecord, convert the body to markdown, and store all relevant metadata.\n\n**Acceptance Criteria:**\n- IMAP fetch workflow (e.g., `fetch_email` or equivalent) updated to return an EmailRecord.\n- UID and folder fields correctly assigned during ingestion.\n- Markdown conversion runs automatically after parsing.\n- Errors from malformed or oversized messages are caught and logged.\n- Resulting EmailRecord is ready for storage, vectorization, and agent processing.\n- Does not break local `.eml` file ingestion or classification flows.",
+    "labels": [
+      "enhancement",
+      "backend",
+      "agent:ingestion",
+      "robustness"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "Update ChatOpenAI initialization to use 'model' param and temperature fallback",
-    "body": "Update full_agentic_build/utils/llm_utils.py to use ChatOpenAI(model=...) (newer API), with safe handling when temperature is unsupported. Keep LLMAdapter.\n\nAcceptance: create_llm() works for gpt-4o-mini and other models; logs fallback only when needed.",
-    "labels": ["LLM", "backend"],
-    "milestone": "Phase 1"
+    "title": "Add optional ingestion path for reading local .eml files",
+    "body": "Add a parallel ingestion path that reads `.eml` files from a directory and passes their raw bytes through the same parsing and markdown conversion pipeline used for IMAP messages. This ensures consistent behavior across multiple data sources used during testing or offline analysis.\n\n**Acceptance Criteria:**\n- New function (e.g., `load_eml_directory(folder_path)`) implemented.\n- Each `.eml` file is read safely in binary mode.\n- Produces a full EmailRecord identical to IMAP ingestion.\n- Guardrails applied for file size, malformed messages, and unsafe MIME parts.\n- Integrated but optional: does not affect default IMAP workflow.",
+    "labels": [
+      "enhancement",
+      "data",
+      "backend",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "README corrections and operational docs (Full Build)",
-    "body": "Correct example LLM model (avoid 'gpt-5'); document required env vars; add notes about quitting the app and browser limitations; include instructions for Windows PowerShell and Docker.",
-    "labels": ["docs"],
-    "milestone": "Phase 1"
+    "title": "Introduce email ingestion guardrails for safety and reliability",
+    "body": "Add robust guardrails to prevent ingestion of potentially unsafe or malformed emails. This includes size limits, HTML sanitization, script stripping, malformed header detection, attachment screening, duplicate detection, and fallback behavior when an email lacks core fields.\n\n**Acceptance Criteria:**\n- Reject emails missing required headers (From, Subject, Date).\n- Implement size-based blocking for extremely large messages.\n- Strip unsafe HTML/script content.\n- Detect and skip duplicate messages via hash or Message-ID.\n- Identify suspicious attachments and mark them as unsafe.\n- Logging and error handling included for all guardrail triggers.",
+    "labels": [
+      "guardrail",
+      "robustness",
+      "backend",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "Add Clear Corpus and Reprocess controls to UI",
-    "body": "Provide buttons to clear corpus, re-run processing selectively, and download results CSV in both Barebones and Full builds.",
-    "labels": ["UI", "feature"],
-    "milestone": "Phase 2"
+    "title": "Update vectorstore and embedding pipeline to support EmailRecord markdown bodies",
+    "body": "Extend the embedding and vectorstore pipeline to work with the new EmailRecord structure and use its `body_markdown` field as the canonical embedding surface. This ensures that search, retrieval, classification, and semantic agents process the cleaned version of the email content while preserving access to the original raw content.\n\n**Acceptance Criteria:**\n- Embedding service updated to embed `body_markdown` (not raw or HTML).\n- Vectorstore documents preserve enough metadata to trace back to the EmailRecord.\n- Migration logic or compatibility handling for older stored emails.\n- Integration tested in streamlit UI search and semantic agent flows.",
+    "labels": [
+      "enhancement",
+      "LLM",
+      "agent:semantic",
+      "data"
+    ],
+    "milestone": "Phase 2",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "Add retries/backoff and JSON parsing resilience for LLM agents",
-    "body": "Wrap temporal/subscription agent calls with retries (exponential backoff), timeouts, and robust JSON parsing with schema validation and fallbacks.",
-    "labels": ["LLM", "robustness"],
-    "milestone": "Phase 2"
+    "title": "Add Streamlit UI hooks for displaying EmailRecord markdown and metadata",
+    "body": "Enhance the Streamlit UI so users can view parsed emails in their markdown-cleaned form along with the associated metadata, attachments, and IMAP identifiers. This will support browsing, debugging, grouping, and classification workflows within the application.\n\n**Acceptance Criteria:**\n- UI component added to show markdown version of each email.\n- Metadata displayed in a structured layout (From, To, Subject, Date, UID, folder).\n- Attachments listed with filenames and inferred safety indicators.\n- Selection mechanism for switching between raw view and markdown view.\n- Verified to work for both IMAP and file-based ingestion.",
+    "labels": [
+      "UI",
+      "streamlit",
+      "feature",
+      "agent:controller"
+    ],
+    "milestone": "Phase 2",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   },
   {
-    "title": "Stop committing vectorstore artifacts; add .gitignore and migration",
-    "body": "Add data/vectorstore to .gitignore; provide a cleanup script; keep a small synthetic dataset under data/sample_emails only.",
-    "labels": ["infra", "data"],
-    "milestone": "Phase 2"
-  },
-  {
-    "title": "Add unit tests for agents and services",
-    "body": "Tests for parsing_agent, guardrail_agent, classification_agent (prompt IO mocked), temporal/subscription JSON parsing, and semantic search indexing.",
-    "labels": ["tests"],
-    "milestone": "Phase 2"
-  },
-  {
-    "title": "Expose model/embedding configuration in UI and support alt providers",
-    "body": "Allow selecting chat and embedding models from the UI (env defaults), and document how to switch to non-OpenAI embeddings if desired.",
-    "labels": ["feature", "config"],
-    "milestone": "Phase 2"
-  },
-  {
-    "title": "Docker run docs and compose validation",
-    "body": "Validate docker-compose workflow with mounted data and .env, ensure Vectorstore persists, and document how to set OPENAI_API_KEY and quit the app from inside the container.",
-    "labels": ["docker", "docs"],
-    "milestone": "Phase 2"
+    "title": "Fix Streamlit UI cleanup and vectorstore maintenance",
+    "body": "Clean up Streamlit apps: fix indentation bug in barebones Run Guardrail button and reuse shared helpers/cleanup flow in full build; vectorstore maintenance should drop handles before deletion and reinit safely.",
+    "labels": [
+      "bug",
+      "frontend",
+      "maintenance"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
   }
 ]
-
