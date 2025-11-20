@@ -181,12 +181,25 @@ with tab4:
         with st.expander("Email details preview"):
             idx = st.number_input("Row", min_value=0, max_value=len(data)-1, value=0, step=1)
             rec = data[int(idx)]
-            st.caption(f"Subject: {rec.get('subject','')}")
-            st.caption(f"From: {rec.get('from','') or rec.get('from_addr','')}")
-            st.caption(f"Date: {rec.get('date','')}")
-            st.caption(f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}")
-            st.write("Markdown preview:")
-            st.code(rec.get("body_markdown") or rec.get("body_text") or rec.get("text") or rec.get("raw",""))
+            view_mode = st.selectbox("View as", ["Markdown", "Plain Text", "Raw HTML"], index=0)
+            header_lines = [
+                f"**Subject:** {rec.get('subject','')}",
+                f"From: {rec.get('from','') or rec.get('from_addr','')}",
+                f"To: {', '.join(rec.get('to', []) or [])}",
+                f"Date: {rec.get('date','')}",
+                f"Message-ID: {rec.get('message_id','')}",
+                f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}",
+            ]
+            if view_mode == "Plain Text":
+                body = rec.get("body_text") or rec.get("text") or rec.get("raw","")
+                body_content = "\n".join(header_lines + ["", body or ""])
+            elif view_mode == "Raw HTML":
+                body = rec.get("body_html") or rec.get("raw","")
+                body_content = "\n".join(header_lines + ["", body or ""])
+            else:
+                body = rec.get("body_markdown") or rec.get("body_text") or rec.get("text") or rec.get("raw","")
+                body_content = body
+            st.code(body_content or "")
     else:
         st.info("No data yet.")
 
