@@ -185,8 +185,8 @@ with tab4:
             st.caption(f"From: {rec.get('from','') or rec.get('from_addr','')}")
             st.caption(f"Date: {rec.get('date','')}")
             st.caption(f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}")
-            st.write("Text preview:")
-            st.code(rec.get("body_text") or rec.get("text") or rec.get("raw",""))
+            st.write("Markdown preview:")
+            st.code(rec.get("body_markdown") or rec.get("body_text") or rec.get("text") or rec.get("raw",""))
     else:
         st.info("No data yet.")
 

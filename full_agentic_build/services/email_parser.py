@@ -15,6 +15,7 @@ from typing import Tuple, Optional, List
 from bs4 import BeautifulSoup
 
 from services.email_record import EmailRecord, AttachmentRecord
+from services.email_markdown import to_markdown
 
 # Guardrails
 MAX_EMAIL_BYTES = int(os.getenv("MAX_EMAIL_BYTES", 5 * 1024 * 1024))  # 5MB default
@@ -109,6 +110,15 @@ def parse_email_bytes(raw_bytes: bytes, source: Optional[str] = None) -> EmailRe
     html_body, text_body = _collect_bodies(msg)
     cleaned_html, cleaned_text_from_html = _clean_html(html_body or "")
     primary_text = text_body or cleaned_text_from_html
+    body_markdown = to_markdown(
+        subject=msg.get("subject", ""),
+        from_addr=msg.get("from", ""),
+        to_addrs=msg.get_all("to", []) or [],
+        date=msg.get("date", ""),
+        message_id=msg.get("message-id", ""),
+        body_text=primary_text or "",
+        body_html=cleaned_html or "",
+    )
 
     attachments = _collect_attachments(msg)
 
@@ -127,7 +137,7 @@ def parse_email_bytes(raw_bytes: bytes, source: Optional[str] = None) -> EmailRe
         body_raw=html_body or text_body or "",
         body_html=cleaned_html or None,
         body_text=primary_text or None,
-        body_markdown=None,  # Markdown pipeline handled elsewhere
+        body_markdown=body_markdown or None,
         eml_source=source,
         attachments=attachments,
         metadata={
