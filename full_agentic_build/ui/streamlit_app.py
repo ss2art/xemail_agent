@@ -18,6 +18,7 @@ from agents.semantic_agent import search
 from agents.discovery_agent import remember_topic
 from services.embeddings_service import get_vectorstore, clear_vectorstore
 from services.storage_service import load_corpus, save_corpus, add_items, clear_corpus
+from services.email_markdown import to_markdown
 
 # UI descriptor for the entire set of read emails (do not change function names)
 COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
@@ -71,6 +72,21 @@ def _index_size(vs) -> int:
             return len(data.get("ids", []))
         except Exception:
             return 0
+
+
+def _markdown_from_record(rec: dict) -> str:
+    """Reconstruct markdown if not already present."""
+    if rec.get("body_markdown"):
+        return rec["body_markdown"]
+    return to_markdown(
+        subject=rec.get("subject", "") or "",
+        from_addr=rec.get("from", "") or rec.get("from_addr", "") or "",
+        to_addrs=rec.get("to", []) or [],
+        date=rec.get("date", "") or "",
+        message_id=rec.get("message_id", "") or "",
+        body_text=rec.get("body_text") or rec.get("text") or "",
+        body_html=rec.get("body_html") or rec.get("raw") or "",
+    )
 
 
 with st.sidebar:
@@ -197,7 +213,7 @@ with tab4:
                 body = rec.get("body_html") or rec.get("raw","")
                 body_content = "\n".join(header_lines + ["", body or ""])
             else:
-                body = rec.get("body_markdown") or rec.get("body_text") or rec.get("text") or rec.get("raw","")
+                body = _markdown_from_record(rec)
                 body_content = body
             st.code(body_content or "")
     else:
