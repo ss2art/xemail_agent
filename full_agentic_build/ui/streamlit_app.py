@@ -1,5 +1,5 @@
 # --- Cross-platform import fix & dotenv ---
-import sys, os
+import sys, os, json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dotenv import load_dotenv
@@ -25,6 +25,8 @@ COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
 
 st.set_page_config(page_title="Email Intelligence Agent — Full Build v4", layout="wide")
 st.title("📧 Email Intelligence Agent — Full Build v4")
+
+DEBUG_MODE = "--debug" in sys.argv
 
 # Sidebar: config and quit controls
 # Initialize LLM & Vectorstore
@@ -216,6 +218,9 @@ with tab4:
                 body = _markdown_from_record(rec)
                 body_content = body
             st.code(body_content or "")
+            if DEBUG_MODE:
+                st.markdown("**Full record (debug):**")
+                st.code(json.dumps(rec, ensure_ascii=False, indent=2))
     else:
         st.info("No data yet.")
 
