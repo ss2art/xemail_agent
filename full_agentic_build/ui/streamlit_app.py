@@ -166,15 +166,27 @@ with tab4:
     if data:
         df = pd.DataFrame([{
             "subject": d.get("subject",""),
-            "sender": d.get("from",""),
+            "sender": d.get("from","") or d.get("from_addr",""),
             "date": d.get("date",""),
             "category": d.get("category",""),
             "guardrail": d.get("guardrail",{}).get("status",""),
             "guardrail_reason": ", ".join(d.get("guardrail",{}).get("notes", [])),
             "expired": d.get("temporal",{}).get("status",""),
             "subscription": d.get("subscription",{}).get("is_subscription", False),
+            "attachments": len(d.get("attachments", [])),
+            "folder": d.get("folder",""),
+            "uid": d.get("uid",""),
         } for d in data])
         st.dataframe(df, width='stretch')
+        with st.expander("Email details preview"):
+            idx = st.number_input("Row", min_value=0, max_value=len(data)-1, value=0, step=1)
+            rec = data[int(idx)]
+            st.caption(f"Subject: {rec.get('subject','')}")
+            st.caption(f"From: {rec.get('from','') or rec.get('from_addr','')}")
+            st.caption(f"Date: {rec.get('date','')}")
+            st.caption(f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}")
+            st.write("Text preview:")
+            st.code(rec.get("body_text") or rec.get("text") or rec.get("raw",""))
     else:
         st.info("No data yet.")
 
