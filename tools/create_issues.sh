@@ -89,8 +89,8 @@ set +e
 set +o pipefail
 
 idx=0
-# iterate JSON objects safely (command substitution feeds the loop)
-while IFS= read -r row; do
+mapfile -t ISSUE_ROWS < <($JQ -c '.[]' "$ISSUES_JSON")
+for row in "${ISSUE_ROWS[@]}"; do
   idx=$((idx+1))
   title=$($JQ -r '.title // empty' <<<"$row")
   body=$($JQ -r '.body // empty' <<<"$row")
@@ -195,7 +195,7 @@ while IFS= read -r row; do
       fi
     fi
   fi
-done <<<"$($JQ -c '.[]' "$ISSUES_JSON")"
+done
 
 # Restore strict modes after pipeline
 set -euo pipefail
