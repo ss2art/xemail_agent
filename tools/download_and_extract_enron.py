@@ -35,9 +35,9 @@ def download_enron(archive_path):
 def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
     """
     Extract ONLY the first N folders under maildir/<username>
-    Example paths:
-      maildir/allen-p/
-      maildir/arnold-j/
+    Example paths (note archive root prefix):
+      enron_mail_20110402/maildir/allen-p/
+      enron_mail_20110402/maildir/arnold-j/
       …
     """
     print(f"📦 Extracting only first {mailbox_limit} mailboxes…")
@@ -45,11 +45,15 @@ def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
     with tarfile.open(archive_path, "r:gz") as tar:
         members = tar.getmembers()
 
-        # Identify top-level maildir folders (maildir/<user>/)
+        # Detect archive root prefix (first path part)
+        root_prefix = Path(members[0].name).parts[0]
+        maildir_prefix = f"{root_prefix}/maildir"
+
+        # Identify top-level maildir folders (root/maildir/<user>/)
         mailboxes = []
         for m in members:
             parts = Path(m.name).parts
-            if len(parts) == 2 and parts[0] == "maildir" and m.isdir():
+            if len(parts) == 3 and parts[0] == root_prefix and parts[1] == "maildir" and m.isdir():
                 mailboxes.append(m)
 
         mailboxes = sorted(mailboxes, key=lambda m: m.name)
@@ -115,7 +119,7 @@ def main(mailbox_limit, email_limit):
         extract_limited_mailboxes(archive_path, extract_to, mailbox_limit)
 
     # STEP 3 — Find emails inside extracted maildir
-    maildir_root = os.path.join(extract_to, "maildir")
+    maildir_root = os.path.join(extract_to, "enron_mail_20110402", "maildir")
     files = collect_email_files(maildir_root)
     sample = random.sample(files, min(email_limit, len(files)))
 
