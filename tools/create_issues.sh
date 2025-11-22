@@ -161,11 +161,16 @@ $JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
     done
     printf '\n' >&2
   else
-    if ! "${cmd[@]}"; then
+    if ! out=$("${cmd[@]}" 2>&1); then
       if [ "$CONTINUE_ON_ERROR" -eq 1 ]; then
-        echo "Issue creation failed for title: $title (continuing)" >&2
+        echo "Issue creation failed for title: $title" >&2
+        echo "Payload: $row" >&2
+        echo "Error: $out" >&2
         continue
       else
+        echo "Issue creation failed for title: $title" >&2
+        echo "Payload: $row" >&2
+        echo "Error: $out" >&2
         exit 1
       fi
     fi
