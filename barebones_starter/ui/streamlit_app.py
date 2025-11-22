@@ -1,30 +1,34 @@
 # --- Path Fix for Cross-Platform Imports ---
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys, os, threading, time
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parents[1]          # barebones_starter/
+REPO_ROOT = BASE_DIR.parent                             # repo root
+sys.path.append(str(BASE_DIR))
 
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+root_env = REPO_ROOT / ".env"
+if root_env.exists():
+    load_dotenv(dotenv_path=root_env)
 
 # --- Standard Imports
-import os, pandas as pd, streamlit as st, threading, time
+import pandas as pd
+import streamlit as st
 from streamlit.components.v1 import html
 from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
-from email import policy
-from email.parser import BytesParser
 from utils.llm_utils import create_llm
 
 
-
 st.set_page_config(page_title="Email Intelligence Agent (Barebones)", layout="centered")
-st.title("Email Intelligence Agent — Barebones Starter")
+st.title("Email Intelligence Agent - Barebones Starter")
 
-DATA_DIR = "./data"
+DATA_DIR = os.getenv("DATA_DIR", str(REPO_ROOT / "data"))
 SAMPLE_DIR = os.path.join(DATA_DIR, "sample_emails")
 
 with st.sidebar:
     st.header("Config")
-    st.caption("Set your OPENAI_API_KEY in a local .env file")
+    st.caption("Set your OPENAI_API_KEY in the root .env file")
     st.write(f"Guardrail: **{os.getenv('ENABLE_GUARDRAIL','True')}**")
     st.markdown("---")
     # Quit controls
@@ -63,7 +67,7 @@ with st.sidebar:
             """)
 
 
-tab1, tab2 = st.tabs(["📥 Load & Classify", "📊 Results"])
+tab1, tab2 = st.tabs(["Load & Classify", "Results"])
 
 try:
     llm = create_llm()
@@ -112,7 +116,7 @@ with tab2:
             }
             for r in results
         ])
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
 
         # Show guardrail reasons for failures/warnings
         failed = [r for r in results if r.get("guardrail",{}).get("status") in ("REJECTED","WARN")]
@@ -131,4 +135,3 @@ with tab2:
                         st.write("(no notes)")
     else:
         st.info("No results yet. Run classification first.")
-

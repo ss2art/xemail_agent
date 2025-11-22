@@ -5,9 +5,9 @@ This script attempts to import `create_llm()` from the given subproject
 (`barebones_starter` or `full_agentic_build`) and then calls the first
 available invocation method on the LLM (invoke -> transform -> predict -> __call__).
 
-It requires that you run it with the subproject virtualenv Python if you want
-to test the runtime environment (recommended). If OPENAI_API_KEY is not set
-it will report that and skip making remote requests.
+Use the shared root virtualenv Python (`.\.venv\Scripts\python.exe`) so both
+subprojects share the same dependency set. If OPENAI_API_KEY is not set it
+will report that and skip making remote requests.
 """
 from __future__ import annotations
 import argparse

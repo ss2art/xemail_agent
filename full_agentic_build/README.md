@@ -1,51 +1,36 @@
-# Full Agentic Build — v4
+# Full Agentic Build (v4)
 
-This subproject contains the fuller agentic build (multiple agents, services,
-and optional Docker compose). The `requirements.txt` lists the critical
-LLM/integration pins used for development; other libraries are intentionally
-kept minimal and will be pulled in transitively.
+Uses the shared root environment, requirements, and data directory.
 
-## Quick Start (Windows PowerShell)
+## Run (from repo root)
 
-1. Change into the subproject directory and create/activate a venv:
+1. Ensure the root venv is set up and requirements installed (`python -m venv .venv && .\.venv\Scripts\Activate.ps1 && pip install -r requirements.txt`).
+2. Make sure root `.env` is populated (copy `.env.example` if needed) with `OPENAI_API_KEY`, `LLM_MODEL`, etc.
+3. Start Streamlit:
+   ```powershell
+   python -m streamlit run full_agentic_build/ui/streamlit_app.py --server.address=0.0.0.0 --server.port=7860
+   ```
+4. (Optional) Quick smoke of key deps:
+   ```powershell
+   .\.venv\Scripts\python.exe -c "import langchain, langchain_openai, openai, chromadb; print('ok')"
+   ```
 
- ```powershell
- Set-Location 'C:\path\to\xemail_agent\full_agentic_build'
- python -m venv .venv
- .\.venv\Scripts\Activate.ps1
- ```
+## Data and vectorstore
 
-2. Install the pinned requirements:
+- Shared data lives at `data/` (root). Set `DATA_DIR` and `VECTOR_DIR` env vars to override; defaults point to `data` and `data/vectorstore` at repo root.
 
- ```powershell
- .\.venv\Scripts\python.exe -m pip install -r requirements.txt
- ```
+## Docker
 
-3. Add your environment variables to `.env` (copy `.env.example` if present),
- including your OpenAI API key:
-
- ```text
- OPENAI_API_KEY=sk-...
- LLM_MODEL=gpt-5
- ```
-
-4. Run quick smoke checks (import tests):
-
- ```powershell
- .\.venv\Scripts\python.exe -c "import langchain, langchain_openai, openai, chromadb; print('ok')"
- ```
-
-### Optional: Docker
-
-- If you prefer Docker, there's a `docker-compose.yml` and `Dockerfile`.
-  Ensure the environment variables are provided to the container (via `.env`
-  or compose overrides) before starting the services.
+Built from the single root `Dockerfile`/`docker-compose.yml`. Example:
+```powershell
+docker compose up email-agent-full
+```
 
 ### Notes
 
 - Place `.eml` files in a folder and point the UI to that folder under **Load Emails**.
 - Vector index persists under `data/vectorstore`.
-- Run the Streamlit UI:
+- Run the Streamlit UI directly:
   - Default: `streamlit run full_agentic_build/ui/streamlit_app.py`
   - Debug (shows full EmailRecord JSON under previews): `streamlit run full_agentic_build/ui/streamlit_app.py -- --debug`
   - With venv on Windows: `.venv\Scripts\streamlit run full_agentic_build/ui/streamlit_app.py`

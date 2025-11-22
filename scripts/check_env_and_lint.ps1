@@ -12,17 +12,17 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Write-Output "Repository root: $root"
 
 $subprojects = @('barebones_starter','full_agentic_build')
+$py = Join-Path $root ".venv\Scripts\python.exe"
 
-foreach ($sp in $subprojects) {
-    $py = Join-Path $root "$sp\.venv\Scripts\python.exe"
-    if (Test-Path $py) {
+if (-not (Test-Path $py)) {
+    Write-Output "Root venv not found at $py; please create it first (python -m venv .venv && pip install -r requirements.txt)."
+} else {
+    foreach ($sp in $subprojects) {
         Write-Output "\n--- Running llm_smoke for $sp using $py ---"
-        & $py (Join-Path $root 'scripts\llm_smoke.py') --subproject $sp
+        & $py (Join-Path $root 'tools\llm_smoke.py') --subproject $sp
         if ($LASTEXITCODE -ne 0) {
             Write-Output "llm_smoke returned exit code $LASTEXITCODE for $sp"
         }
-    } else {
-        Write-Output "Skipping $sp: venv python not found at $py"
     }
 }
 
