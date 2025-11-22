@@ -3,19 +3,29 @@ set -euo pipefail
 
 # command-line flags
 DRY_RUN=0
+ISSUES_JSON=${ISSUES_JSON:-data/issues.json}
 while [[ ${1:-} != "" ]]; do
   case "$1" in
     --dry-run|-n)
       DRY_RUN=1
       shift
       ;;
+    --file|-f)
+      ISSUES_JSON="${2:-}"
+      if [[ -z "$ISSUES_JSON" ]]; then
+        echo "Missing value for --file" >&2
+        exit 2
+      fi
+      shift 2
+      ;;
     --help|-h)
       cat <<'USAGE'
-Usage: create_issues.sh [--dry-run]
+Usage: create_issues.sh [--dry-run] [--file PATH]
 
 Options:
-  --dry-run, -n   Print the gh command(s) that would be executed instead of running them
-  --help, -h      Show this help
+  --dry-run, -n         Print the gh command(s) that would be executed instead of running them
+  --file, -f PATH       Path to issues JSON (default: data/issues.json or $ISSUES_JSON)
+  --help, -h            Show this help
 USAGE
       exit 0
       ;;
@@ -58,13 +68,13 @@ if [ -z "${GH:-}" ]; then
   fi
 fi
 
-if [ ! -f issues.json ]; then
-  echo "issues.json not found in $(pwd)" >&2
+if [ ! -f "$ISSUES_JSON" ]; then
+  echo "issues file not found: $ISSUES_JSON" >&2
   exit 1
 fi
 
 # iterate JSON objects safely
-$JQ -c '.[]' issues.json | while IFS= read -r row; do
+$JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
   title=$($JQ -r '.title // empty' <<<"$row")
   body=$($JQ -r '.body // empty' <<<"$row")
 

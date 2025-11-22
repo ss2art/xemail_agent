@@ -215,5 +215,9 @@ __marimo__/
 .vscode/
 
 # Ignore any folder named 'data' and all its contents anywhere in the repo
-data/
-**/data/
+data/**
+**/data/**
+# Allow small, committed fixtures/configs under root data
+!data/sample_emails/
+!data/sample_emails/**
+!data/issues.json

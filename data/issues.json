@@ -1,0 +1,138 @@
+[
+  {
+    "title": "Implement robust email parsing module for IMAP and .eml ingestion",
+    "body": "Create a safe and comprehensive email parser that extracts all metadata and content needed for the EmailRecord. The parser must gracefully handle malformed emails, missing fields, non-UTF8 content, attachments, multi-part MIME bodies, nested HTML, quoted replies, and potential security-sensitive content.\n\n**Acceptance Criteria:**\n- A new module (e.g., `services/email_parser.py`) parses raw RFC822 bytes into an EmailRecord.\n- Extracts headers, dates, sender/recipient lists, and structured attachment metadata.\n- Cleans HTML into text while stripping scripts, styles, trackers, and unsafe content.\n- Normalizes plain-text bodies and merges multipart segments.\n- Works identically for IMAP `RFC822` fetches and locally loaded `.eml` files.\n- Includes basic guardrails to prevent ingestion of extremely large files or clearly unsafe content.",
+    "labels": [
+      "enhancement",
+      "backend",
+      "LLM",
+      "guardrail",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Add markdown conversion pipeline for cleaned email bodies",
+    "body": "Add a dedicated markdown converter that transforms parsed email content into a consistent and readable format suitable for LLM ingestion, indexing, search, and UI display. Markdown output should include a header block with metadata, followed by cleaned message content with unnecessary quoting and noise removed.\n\n**Acceptance Criteria:**\n- A module (e.g., `services/email_markdown.py`) produces markdown according to a defined template.\n- Metadata section includes From, To, Subject, Date, and Message-ID.\n- Body is cleaned for excessive quoting, repeated whitespace, HTML artifacts, and non-text MIME content.\n- Markdown output is validated to be safe for vectorization and display.\n- Integrated into the email ingestion pipeline so every EmailRecord includes `body_markdown`.",
+    "labels": [
+      "enhancement",
+      "LLM",
+      "core",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Integrate email parsing and markdown conversion into IMAP ingestion flow",
+    "body": "Extend the IMAP ingestion logic to incorporate the new parsing and markdown-generation modules. When reading from the mail server, the system should fetch the raw email bytes, build an EmailRecord, convert the body to markdown, and store all relevant metadata.\n\n**Acceptance Criteria:**\n- IMAP fetch workflow (e.g., `fetch_email` or equivalent) updated to return an EmailRecord.\n- UID and folder fields correctly assigned during ingestion.\n- Markdown conversion runs automatically after parsing.\n- Errors from malformed or oversized messages are caught and logged.\n- Resulting EmailRecord is ready for storage, vectorization, and agent processing.\n- Does not break local `.eml` file ingestion or classification flows.",
+    "labels": [
+      "enhancement",
+      "backend",
+      "agent:ingestion",
+      "robustness"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Add optional ingestion path for reading local .eml files",
+    "body": "Add a parallel ingestion path that reads `.eml` files from a directory and passes their raw bytes through the same parsing and markdown conversion pipeline used for IMAP messages. This ensures consistent behavior across multiple data sources used during testing or offline analysis.\n\n**Acceptance Criteria:**\n- New function (e.g., `load_eml_directory(folder_path)`) implemented.\n- Each `.eml` file is read safely in binary mode.\n- Produces a full EmailRecord identical to IMAP ingestion.\n- Guardrails applied for file size, malformed messages, and unsafe MIME parts.\n- Integrated but optional: does not affect default IMAP workflow.",
+    "labels": [
+      "enhancement",
+      "data",
+      "backend",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Introduce email ingestion guardrails for safety and reliability",
+    "body": "Add robust guardrails to prevent ingestion of potentially unsafe or malformed emails. This includes size limits, HTML sanitization, script stripping, malformed header detection, attachment screening, duplicate detection, and fallback behavior when an email lacks core fields.\n\n**Acceptance Criteria:**\n- Reject emails missing required headers (From, Subject, Date).\n- Implement size-based blocking for extremely large messages.\n- Strip unsafe HTML/script content.\n- Detect and skip duplicate messages via hash or Message-ID.\n- Identify suspicious attachments and mark them as unsafe.\n- Logging and error handling included for all guardrail triggers.",
+    "labels": [
+      "guardrail",
+      "robustness",
+      "backend",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Update vectorstore and embedding pipeline to support EmailRecord markdown bodies",
+    "body": "Extend the embedding and vectorstore pipeline to work with the new EmailRecord structure and use its `body_markdown` field as the canonical embedding surface. This ensures that search, retrieval, classification, and semantic agents process the cleaned version of the email content while preserving access to the original raw content.\n\n**Acceptance Criteria:**\n- Embedding service updated to embed `body_markdown` (not raw or HTML).\n- Vectorstore documents preserve enough metadata to trace back to the EmailRecord.\n- Migration logic or compatibility handling for older stored emails.\n- Integration tested in streamlit UI search and semantic agent flows.",
+    "labels": [
+      "enhancement",
+      "LLM",
+      "agent:semantic",
+      "data"
+    ],
+    "milestone": "Phase 2",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Add Streamlit UI hooks for displaying EmailRecord markdown and metadata",
+    "body": "Enhance the Streamlit UI so users can view parsed emails in their markdown-cleaned form along with the associated metadata, attachments, and IMAP identifiers. This will support browsing, debugging, grouping, and classification workflows within the application.\n\n**Acceptance Criteria:**\n- UI component added to show markdown version of each email.\n- Metadata displayed in a structured layout (From, To, Subject, Date, UID, folder).\n- Attachments listed with filenames and inferred safety indicators.\n- Selection mechanism for switching between raw view and markdown view.\n- Verified to work for both IMAP and file-based ingestion.",
+    "labels": [
+      "UI",
+      "streamlit",
+      "feature",
+      "agent:controller"
+    ],
+    "milestone": "Phase 2",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Fix Streamlit UI cleanup and vectorstore maintenance",
+    "body": "Clean up Streamlit apps: fix indentation bug in barebones Run Guardrail button and reuse shared helpers/cleanup flow in full build; vectorstore maintenance should drop handles before deletion and reinit safely.",
+    "labels": [
+      "bug",
+      "frontend",
+      "maintenance"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  }
+]
