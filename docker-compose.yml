@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  email-agent-full:
+    build: .
+    command: streamlit run full_agentic_build/ui/streamlit_app.py --server.address=0.0.0.0 --server.port=7860
+    ports:
+      - "7860:7860"
+    env_file:
+      - .env
+    environment:
+      - DATA_DIR=/app/data
+      - VECTOR_DIR=/app/data/vectorstore
+    volumes:
+      - ./data:/app/data
+
+  email-agent-barebones:
+    build: .
+    command: streamlit run barebones_starter/ui/streamlit_app.py --server.address=0.0.0.0 --server.port=8501
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - DATA_DIR=/app/data
+    volumes:
+      - ./data:/app/data

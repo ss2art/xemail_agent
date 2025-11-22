@@ -1,11 +1,15 @@
 #!/bin/bash
 echo "====================================="
-echo " Rebuild Python Environment (Linux/Mac)"
+echo " Rebuild shared Python Environment"
 echo "====================================="
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+cd "$REPO_ROOT"
 
 # Remove old virtual environment if exists
 if [ -d ".venv" ]; then
-    echo "Removing existing virtual environment..."
+    echo "Removing existing root virtual environment..."
     rm -rf .venv
 fi
 
@@ -16,11 +20,11 @@ source .venv/bin/activate
 echo "Upgrading pip and setuptools..."
 python -m pip install --upgrade pip setuptools wheel
 
-echo "Installing requirements..."
+echo "Installing shared requirements..."
 pip install -r requirements.txt
 
 echo "Done!"
 echo "To activate later, run:"
 echo "    source .venv/bin/activate"
 echo "Then start Streamlit with:"
-echo "    streamlit run ui/streamlit_app.py"
+echo "    streamlit run barebones_starter/ui/streamlit_app.py"

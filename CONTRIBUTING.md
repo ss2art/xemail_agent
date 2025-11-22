@@ -4,32 +4,27 @@ This document explains how to set up a local development environment, run
 the verification and smoke tests, and follow the project's commit and PR
 conventions.
 
-## Quick setup (per subproject)
+## Quick setup (shared root environment)
 
-- We use per-subproject virtual environments. From the repo root, do:
-
-  PowerShell example (barebones):
+- Use the single root virtual environment for both subprojects:
 
   ```powershell
-  Set-Location 'C:\path\to\xemail_agent\barebones_starter'
+  Set-Location 'C:\path\to\xemail_agent'
   python -m venv .venv
   .\.venv\Scripts\Activate.ps1
   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-  copy .env.example .env # edit OPENAI_API_KEY inside .env
-  .\.venv\Scripts\python.exe ..\barebones_starter\scripts\verify_llm.py
-  .\.venv\Scripts\python.exe -m streamlit run .\ui\streamlit_app.py --server.port 8501 --server.headless true
+  copy .env.example .env   # configure OPENAI_API_KEY / LLM_MODEL
+  .\.venv\Scripts\python.exe tools\verify_llm.py
   ```
 
-  And for the full agentic build:
+  Run the UIs from repo root:
 
   ```powershell
-  Set-Location 'C:\path\to\xemail_agent\full_agentic_build'
-  python -m venv .venv
-  .\.venv\Scripts\Activate.ps1
-  .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-  copy .env.example .env # configure OPENAI_API_KEY and LLM_MODEL
-  .\.venv\Scripts\python.exe ..\barebones_starter\scripts\verify_llm.py
-  .\.venv\Scripts\python.exe -m streamlit run .\ui\streamlit_app.py --server.port 8502 --server.headless true
+  # Barebones (port 8501)
+  .\.venv\Scripts\python.exe -m streamlit run .\barebones_starter\ui\streamlit_app.py --server.port 8501 --server.headless true
+
+  # Full build (port 7860)
+  .\.venv\Scripts\python.exe -m streamlit run .\full_agentic_build\ui\streamlit_app.py --server.port 7860 --server.headless true
   ```
 
 ## Git hooks (commit message enforcement)
@@ -86,13 +81,13 @@ to the issue, use the numeric `#<number>` form.
 
 ## Running verification and smoke tests
 
-- `barebones_starter/scripts/verify_llm.py` is a small diagnostic that
+- `tools/verify_llm.py` is a small diagnostic that
   instantiates the project's LLM (prefers `create_llm()` adapters) and
   attempts multiple invocation patterns. Run it in the corresponding venv to
   validate your environment.
 
 - For UI smoke testing, start the Streamlit app and exercise these flows:
-  - Load sample EMLs (the repo contains samples under `full_agentic_build/data/sample_emails`)
+  - Load sample EMLs (the repo contains samples under `data/sample_emails`)
   - Run processing (ingest -> parse -> embed -> index -> semantic search)
 
 ## Searching the repository

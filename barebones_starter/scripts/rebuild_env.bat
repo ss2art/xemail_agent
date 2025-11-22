@@ -1,12 +1,15 @@
 @echo off
 echo =====================================
-echo  Rebuild Python Environment (Windows)
+echo  Rebuild shared Python Environment (Windows)
 echo =====================================
 setlocal
 
+for %%I in ("%~dp0\..\..") do set REPO_ROOT=%%~fI
+pushd "%REPO_ROOT%"
+
 REM Remove old virtual environment if exists
 if exist .venv (
-    echo Removing existing virtual environment...
+    echo Removing existing root virtual environment...
     rmdir /s /q .venv
 )
 
@@ -17,13 +20,14 @@ call .venv\Scripts\activate
 echo Upgrading pip and setuptools...
 python -m pip install --upgrade pip setuptools wheel
 
-echo Installing requirements...
+echo Installing shared requirements...
 pip install -r requirements.txt
 
 echo Done! To activate later, run:
 echo     call .venv\Scripts\activate
 echo Then start Streamlit with:
-echo     streamlit run ui\streamlit_app.py
+echo     python -m streamlit run barebones_starter\ui\streamlit_app.py
 
+popd
 endlocal
 pause

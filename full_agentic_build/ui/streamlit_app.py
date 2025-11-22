@@ -1,15 +1,19 @@
-# --- Cross-platform import fix & dotenv ---
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# --- Cross-platform imports & dotenv ---
+import sys, os, threading
+from pathlib import Path
+from datetime import datetime
+
+BASE_DIR = Path(__file__).resolve().parents[1]          # full_agentic_build/
+REPO_ROOT = BASE_DIR.parent                             # repo root
+sys.path.append(str(BASE_DIR))
 
 from dotenv import load_dotenv
-env_path = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), '.env')
-if os.path.exists(env_path):
-    load_dotenv(dotenv_path=env_path, override=True)
+root_env = REPO_ROOT / ".env"
+if root_env.exists():
+    load_dotenv(dotenv_path=root_env, override=True)
 
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 
 from utils.llm_utils import create_llm
 from agents.ingestion_agent import load_eml_folder
@@ -21,21 +25,21 @@ from services.storage_service import load_corpus, save_corpus, add_items, clear_
 
 # UI descriptor for the entire set of read emails (do not change function names)
 COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
+DATA_DIR = os.getenv("DATA_DIR", str(REPO_ROOT / "data"))
+VECTOR_DIR = os.getenv("VECTOR_DIR", str(Path(DATA_DIR) / "vectorstore"))
 
-st.set_page_config(page_title="Email Intelligence Agent — Full Build v4", layout="wide")
-st.title("📧 Email Intelligence Agent — Full Build v4")
+st.set_page_config(page_title="Email Intelligence Agent - Full Build v4", layout="wide")
+st.title("Email Intelligence Agent - Full Build v4")
 
-# Sidebar: config and quit controls
 # Initialize LLM & Vectorstore
 try:
     llm = create_llm()
-    st.success("✅ LLM initialized")
+    st.success("LLM initialized")
 except Exception as e:
     st.error(f"LLM initialization failed: {e}")
     st.stop()
 
-vector_dir = os.getenv("VECTOR_DIR", "./data/vectorstore")
-vectorstore = get_vectorstore(vector_dir)
+vectorstore = get_vectorstore(VECTOR_DIR)
 
 
 def _human_bytes(n: int) -> str:
@@ -75,18 +79,17 @@ def _index_size(vs) -> int:
 
 with st.sidebar:
     st.header("Config")
-    st.caption("Set your OPENAI_API_KEY in a local .env file")
+    st.caption("Set your OPENAI_API_KEY in the root .env file")
     st.write(f"Guardrail: **{os.getenv('ENABLE_GUARDRAIL','True')}**")
     st.markdown("---")
 
     email_count = len(load_corpus())
-    vs_dir = vector_dir
-    storage_size = _dir_size(vs_dir)
+    storage_size = _dir_size(VECTOR_DIR)
     try:
         index_size = _index_size(vectorstore)
     except Exception:
         index_size = 0
-    last_proc = st.session_state.get("last_processed_at") or "—"
+    last_proc = st.session_state.get("last_processed_at") or "n/a"
 
     st.caption(f"Emails: {email_count}")
     st.caption(f"Storage Size: {_human_bytes(storage_size)}")
@@ -97,13 +100,10 @@ with st.sidebar:
     if "quit_requested" not in st.session_state:
         st.session_state["quit_requested"] = False
 
-    clicked_quit = False
     if not st.session_state["quit_requested"]:
-        clicked_quit = st.button("Quit")
-        if clicked_quit:
+        if st.button("Quit"):
             st.session_state["quit_requested"] = True
-
-    if st.session_state["quit_requested"]:
+    else:
         st.warning("To quit: please close this browser tab/window. To stop the backend server, click 'Stop server' below.")
         if st.button("Stop server"):
             st.info("Shutting down the app shortly...")
@@ -116,15 +116,16 @@ with st.sidebar:
                 except Exception:
                     pass
 
-            import threading
             threading.Thread(target=_delayed_exit, args=(1.0,), daemon=True).start()
 
 # Tabs include a maintenance section for clearing data and vector store
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📥 Load Emails", "🤖 Classify & Index", "🔎 Topic Search", "📊 Results", "🧹 Maintenance"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["Load Emails", "Classify & Index", "Topic Search", "Results", "Maintenance"]
+)
 
 with tab1:
     st.subheader("Load .eml samples")
-    folder = st.text_input("Folder path", value="./data/sample_emails")
+    folder = st.text_input("Folder path", value=os.path.join(DATA_DIR, "sample_emails"))
     if st.button("Load Files"):
         items = load_eml_folder(folder)
         if items:
@@ -174,7 +175,7 @@ with tab4:
             "expired": d.get("temporal",{}).get("status",""),
             "subscription": d.get("subscription",{}).get("is_subscription", False),
         } for d in data])
-        st.dataframe(df, width='stretch')
+        st.dataframe(df, width="stretch")
     else:
         st.info("No data yet.")
 
@@ -183,12 +184,12 @@ with tab5:
     st.caption("Clear stored emails and vector index. This cannot be undone.")
 
     email_count2 = len(load_corpus())
-    storage_size2 = _dir_size(vector_dir)
+    storage_size2 = _dir_size(VECTOR_DIR)
     try:
         index_size2 = _index_size(globals().get("vectorstore"))
     except Exception:
         index_size2 = 0
-    last_proc2 = st.session_state.get("last_processed_at") or "—"
+    last_proc2 = st.session_state.get("last_processed_at") or "n/a"
 
     st.markdown("#### Stats")
     st.caption(f"Emails: {email_count2}")
@@ -238,8 +239,8 @@ with tab5:
                     current_vs = globals().get("vectorstore")
                     globals()["vectorstore"] = None
                     try:
-                        clear_vectorstore(vector_dir, current_vs)
-                        globals()["vectorstore"] = get_vectorstore(vector_dir)
+                        clear_vectorstore(VECTOR_DIR, current_vs)
+                        globals()["vectorstore"] = get_vectorstore(VECTOR_DIR)
                         st.success("Vector store cleared and reinitialized.")
                     except Exception as e:
                         st.error(f"Vector store cleanup failed: {e}")

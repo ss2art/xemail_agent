@@ -1,7 +1,11 @@
 import os
-root = r'C:\Users\ss2ar\source\repos\xemail_agent\barebones_starter\.venv\Lib\site-packages'
+from pathlib import Path
+
+repo_root = Path(__file__).resolve().parent
+site_packages = repo_root / ".venv" / "Lib" / "site-packages"
+
 matches = []
-for dirpath, dirnames, filenames in os.walk(root):
+for dirpath, dirnames, filenames in os.walk(site_packages):
     for fn in filenames:
         if fn.endswith('.py'):
             fp = os.path.join(dirpath, fn)

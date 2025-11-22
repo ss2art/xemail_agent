@@ -1,5 +1,6 @@
 import gc
 import os
+from pathlib import Path
 import shutil
 import time
 from typing import Any
@@ -22,6 +23,9 @@ try:  # pragma: no cover - best-effort cleanup on platforms like Windows
 except Exception:  # pragma: no cover
     SharedSystemClient = None  # type: ignore
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_VECTOR_DIR = Path(os.getenv("VECTOR_DIR") or (REPO_ROOT / "data" / "vectorstore"))
+
 
 def get_embeddings():
     model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
@@ -29,16 +33,15 @@ def get_embeddings():
 
 
 def get_vectorstore(persist_directory: str = None):
-    persist_directory = persist_directory or os.getenv("VECTOR_DIR", "./data/vectorstore")
-    os.makedirs(persist_directory, exist_ok=True)
+    persist_directory = Path(persist_directory or DEFAULT_VECTOR_DIR)
+    persist_directory.mkdir(parents=True, exist_ok=True)
     embeddings = get_embeddings()
-    return Chroma(persist_directory=persist_directory, embedding_function=embeddings)
+    return Chroma(persist_directory=str(persist_directory), embedding_function=embeddings)
 
 
 def clear_vectorstore(persist_directory: str = None, vectorstore=None):
     """Remove all persisted vectorstore data and recreate the directory."""
-    persist_directory = persist_directory or os.getenv("VECTOR_DIR", "./data/vectorstore")
-    persist_directory = os.path.abspath(persist_directory)
+    persist_directory = Path(persist_directory or DEFAULT_VECTOR_DIR).resolve()
 
     def _reset_client(client: Any):
         """Best-effort shutdown to release file handles before deleting the directory."""
@@ -79,7 +82,7 @@ def clear_vectorstore(persist_directory: str = None, vectorstore=None):
         client = getattr(vectorstore, "_client", None)
         _reset_client(client)
 
-    if os.path.isdir(persist_directory):
+    if persist_directory.is_dir():
         last_error = None
         for attempt in range(5):
             try:
@@ -92,4 +95,4 @@ def clear_vectorstore(persist_directory: str = None, vectorstore=None):
                 gc.collect()
         if last_error is not None:
             raise last_error
-    os.makedirs(persist_directory, exist_ok=True)
+    persist_directory.mkdir(parents=True, exist_ok=True)

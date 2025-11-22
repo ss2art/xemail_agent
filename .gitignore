@@ -214,6 +214,10 @@ __marimo__/
 .continue/
 .vscode/
 
-# Ignore any folder named 'data' and all its contents anywhere in the repo
-data/
-**/data/
+# Ignore root data contents by default
+data/*
+# Ignore any folder named 'data' elsewhere
+**/data/**
+# Allow small, committed fixtures under the shared data folder
+!data/sample_emails/
+!data/sample_emails/**
