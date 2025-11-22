@@ -4,11 +4,16 @@ set -euo pipefail
 # command-line flags
 DRY_RUN=0
 CONTINUE_ON_ERROR=0
+VERBOSE=0
 ISSUES_JSON=${ISSUES_JSON:-data/issues.json}
 while [[ ${1:-} != "" ]]; do
   case "$1" in
     --dry-run|-n)
       DRY_RUN=1
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE=1
       shift
       ;;
     --continue-on-error)
@@ -30,6 +35,7 @@ Usage: create_issues.sh [--dry-run] [--file PATH]
 Options:
   --dry-run, -n         Print the gh command(s) that would be executed instead of running them
   --continue-on-error   Do not stop on a failed issue creation (logs the error and continues)
+  --verbose, -v         Verbose logging for each issue payload/command
   --file, -f PATH       Path to issues JSON (default: data/issues.json or $ISSUES_JSON)
   --help, -h            Show this help
 USAGE
@@ -78,11 +84,18 @@ if [ ! -f "$ISSUES_JSON" ]; then
   echo "issues file not found: $ISSUES_JSON" >&2
   exit 1
 fi
+# Avoid aborting the whole script on a single per-issue failure inside the pipeline
+set +e
+set +o pipefail
 
 # iterate JSON objects safely
-$JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
+$JQ -c '.[]' "$ISSUES_JSON" | awk 'BEGIN{c=0} {print ++c "|" $0}' | while IFS='|' read -r idx row; do
   title=$($JQ -r '.title // empty' <<<"$row")
   body=$($JQ -r '.body // empty' <<<"$row")
+
+  if [ "$VERBOSE" -eq 1 ]; then
+    echo "Processing #$idx: $title"
+  fi
 
   # build gh command as an array to handle spaces/newlines safely
   cmd=("${GH}" issue create)
@@ -162,20 +175,18 @@ $JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
     printf '\n' >&2
   else
     # allow command substitution to capture stderr without aborting on non-zero
-    set +e
     out=$("${cmd[@]}" 2>&1)
     status=$?
-    set -e
     if [ $status -eq 0 ]; then
       echo "Created: $title -> $out"
     else
       if [ "$CONTINUE_ON_ERROR" -eq 1 ]; then
-        echo "Issue creation failed for title: $title" >&2
+        echo "Issue creation failed for title: $title (idx=$idx)" >&2
         echo "Payload: $row" >&2
         echo "Error: $out" >&2
         continue
       else
-        echo "Issue creation failed for title: $title" >&2
+        echo "Issue creation failed for title: $title (idx=$idx)" >&2
         echo "Payload: $row" >&2
         echo "Error: $out" >&2
         exit 1
@@ -183,3 +194,6 @@ $JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
     fi
   fi
 done
+
+# Restore strict modes after pipeline
+set -euo pipefail
