@@ -84,12 +84,14 @@ if [ ! -f "$ISSUES_JSON" ]; then
   echo "issues file not found: $ISSUES_JSON" >&2
   exit 1
 fi
-# Avoid aborting the whole script on a single per-issue failure inside the pipeline
+# Avoid aborting the whole script on a single per-issue failure inside the loop
 set +e
 set +o pipefail
 
-# iterate JSON objects safely
-$JQ -c '.[]' "$ISSUES_JSON" | awk 'BEGIN{c=0} {print ++c "|" $0}' | while IFS='|' read -r idx row; do
+idx=0
+# iterate JSON objects safely (process substitution avoids pipeline breakage)
+while IFS= read -r row; do
+  idx=$((idx+1))
   title=$($JQ -r '.title // empty' <<<"$row")
   body=$($JQ -r '.body // empty' <<<"$row")
 
