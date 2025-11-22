@@ -42,21 +42,32 @@ def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
     print(f"📦 Extracting only first {mailbox_limit} mailboxes…")
 
     with tarfile.open(archive_path, "r:gz") as tar:
-        # List only maildir user folders
-        mailboxes = sorted(
-            [m for m in tar.getmembers()
-             if m.name.startswith("maildir/") 
-             and m.name.count("/") == 1]  # ensures top-level mailbox dirs
-        )
+        members = tar.getmembers()
 
+        # Identify top-level maildir folders (maildir/<user>/)
+        mailboxes = []
+        for m in members:
+            parts = Path(m.name).parts
+            if len(parts) == 2 and parts[0] == "maildir" and m.isdir():
+                mailboxes.append(m)
+
+        mailboxes = sorted(mailboxes, key=lambda m: m.name)
         selected = mailboxes[:mailbox_limit]
-        selected_names = {mb.name for mb in selected}
+        if not selected:
+            raise RuntimeError("No mailboxes detected in archive; structure may have changed.")
 
-        # Extract the mailbox directories + all children
-        for member in tar.getmembers():
-            # Extract only items inside the selected mailboxes
-            if any(member.name.startswith(name + "/") or member.name == name for name in selected_names):
-                tar.extract(member, extract_to)
+        selected_prefixes = [m.name.rstrip("/") for m in selected]
+        print(f"Selected mailboxes: {', '.join(Path(p).name for p in selected_prefixes)}")
+
+        def _filtered():
+            for member in members:
+                if any(
+                    member.name == prefix or member.name.startswith(prefix + "/")
+                    for prefix in selected_prefixes
+                ):
+                    yield member
+
+        tar.extractall(path=extract_to, members=_filtered())
 
     print("✅ Extracted limited mailboxes.")
 
@@ -98,8 +109,8 @@ def main(mailbox_limit, email_limit):
     # STEP 1 — Download archive
     download_enron(archive_path)
 
-    # STEP 2 — Extract limited number of mailboxes
-    if not os.path.exists(extract_to):
+    # STEP 2 — Extract limited number of mailboxes (if missing or empty)
+    if (not os.path.exists(extract_to)) or (not os.listdir(extract_to)):
         extract_limited_mailboxes(archive_path, extract_to, mailbox_limit)
 
     # STEP 3 — Find emails inside extracted maildir
