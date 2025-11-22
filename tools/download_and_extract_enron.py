@@ -17,6 +17,7 @@ import email
 from email import policy
 import random
 import argparse
+from pathlib import Path
 
 ENRON_URL = "https://www.cs.cmu.edu/~enron/enron_mail_20110402.tgz"
 
