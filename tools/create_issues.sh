@@ -161,7 +161,12 @@ $JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
     done
     printf '\n' >&2
   else
-    if out=$("${cmd[@]}" 2>&1); then
+    # allow command substitution to capture stderr without aborting on non-zero
+    set +e
+    out=$("${cmd[@]}" 2>&1)
+    status=$?
+    set -e
+    if [ $status -eq 0 ]; then
       echo "Created: $title -> $out"
     else
       if [ "$CONTINUE_ON_ERROR" -eq 1 ]; then
