@@ -3,11 +3,16 @@ set -euo pipefail
 
 # command-line flags
 DRY_RUN=0
+CONTINUE_ON_ERROR=0
 ISSUES_JSON=${ISSUES_JSON:-data/issues.json}
 while [[ ${1:-} != "" ]]; do
   case "$1" in
     --dry-run|-n)
       DRY_RUN=1
+      shift
+      ;;
+    --continue-on-error)
+      CONTINUE_ON_ERROR=1
       shift
       ;;
     --file|-f)
@@ -24,6 +29,7 @@ Usage: create_issues.sh [--dry-run] [--file PATH]
 
 Options:
   --dry-run, -n         Print the gh command(s) that would be executed instead of running them
+  --continue-on-error   Do not stop on a failed issue creation (logs the error and continues)
   --file, -f PATH       Path to issues JSON (default: data/issues.json or $ISSUES_JSON)
   --help, -h            Show this help
 USAGE
@@ -155,6 +161,13 @@ $JQ -c '.[]' "$ISSUES_JSON" | while IFS= read -r row; do
     done
     printf '\n' >&2
   else
-    "${cmd[@]}"
+    if ! "${cmd[@]}"; then
+      if [ "$CONTINUE_ON_ERROR" -eq 1 ]; then
+        echo "Issue creation failed for title: $title (continuing)" >&2
+        continue
+      else
+        exit 1
+      fi
+    fi
   fi
 done
