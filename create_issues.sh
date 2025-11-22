@@ -99,6 +99,44 @@ $JQ -c '.[]' issues.json | while IFS= read -r row; do
     fi
   fi
 
+  # projects: allow "project": "Roadmap" or "projects": ["Roadmap","Another"]
+  projects_type=$($JQ -r 'if has("projects") then (.projects | type) else "none" end' <<<"$row")
+  if [ "$projects_type" = "array" ]; then
+    while IFS= read -r proj; do
+      [ -z "$proj" ] && continue
+      cmd+=(--project "$proj")
+    done < <($JQ -r '.projects[]' <<<"$row")
+  elif [ "$projects_type" = "string" ]; then
+    proj=$($JQ -r '.projects' <<<"$row")
+    if [ -n "$proj" ] && [ "$proj" != "null" ]; then
+      cmd+=(--project "$proj")
+    fi
+  elif $JQ -e 'has("project")' >/dev/null 2>&1 <<<"$row"; then
+    proj=$($JQ -r '.project // empty' <<<"$row")
+    if [ -n "$proj" ]; then
+      cmd+=(--project "$proj")
+    fi
+  fi
+
+  # assignees: support "assignee": "user" or "assignees": ["user1","user2"]
+  assignees_type=$($JQ -r 'if has("assignees") then (.assignees | type) else "none" end' <<<"$row")
+  if [ "$assignees_type" = "array" ]; then
+    while IFS= read -r assignee; do
+      [ -z "$assignee" ] && continue
+      cmd+=(--assignee "$assignee")
+    done < <($JQ -r '.assignees[]' <<<"$row")
+  elif [ "$assignees_type" = "string" ]; then
+    assignee=$($JQ -r '.assignees' <<<"$row")
+    if [ -n "$assignee" ] && [ "$assignee" != "null" ]; then
+      cmd+=(--assignee "$assignee")
+    fi
+  elif $JQ -e 'has("assignee")' >/dev/null 2>&1 <<<"$row"; then
+    assignee=$($JQ -r '.assignee // empty' <<<"$row")
+    if [ -n "$assignee" ]; then
+      cmd+=(--assignee "$assignee")
+    fi
+  fi
+
   if [ "$DRY_RUN" -eq 1 ]; then
     # print a safely quoted version of the command
     printf 'DRY RUN: ' >&2
