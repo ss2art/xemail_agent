@@ -220,4 +220,4 @@ data/**
 # Allow small, committed fixtures/configs under root data
 !data/sample_emails/
 !data/sample_emails/**
-!data/issues.json
+!data/issues.sample.json

@@ -1,0 +1,54 @@
+[
+  {
+    "title": "Implement robust email parsing module for IMAP and .eml ingestion",
+    "body": "Create a safe and comprehensive email parser that extracts all metadata and content needed for the EmailRecord. The parser must gracefully handle malformed emails, missing fields, non-UTF8 content, attachments, multi-part MIME bodies, nested HTML, quoted replies, and potential security-sensitive content.\n\n**Acceptance Criteria:**\n- A new module (e.g., `services/email_parser.py`) parses raw RFC822 bytes into an EmailRecord.\n- Extracts headers, dates, sender/recipient lists, and structured attachment metadata.\n- Cleans HTML into text while stripping scripts, styles, trackers, and unsafe content.\n- Normalizes plain-text bodies and merges multipart segments.\n- Works identically for IMAP `RFC822` fetches and locally loaded `.eml` files.\n- Includes basic guardrails to prevent ingestion of extremely large files or clearly unsafe content.",
+    "labels": [
+      "enhancement",
+      "backend",
+      "LLM",
+      "guardrail",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Add markdown conversion pipeline for cleaned email bodies",
+    "body": "Add a dedicated markdown converter that transforms parsed email content into a consistent and readable format suitable for LLM ingestion, indexing, search, and UI display. Markdown output should include a header block with metadata, followed by cleaned message content with unnecessary quoting and noise removed.\n\n**Acceptance Criteria:**\n- A module (e.g., `services/email_markdown.py`) produces markdown according to a defined template.\n- Metadata section includes From, To, Subject, Date, and Message-ID.\n- Body is cleaned for excessive quoting, repeated whitespace, HTML artifacts, and non-text MIME content.\n- Markdown output is validated to be safe for vectorization and display.\n- Integrated into the email ingestion pipeline so every EmailRecord includes `body_markdown`.",
+    "labels": [
+      "enhancement",
+      "LLM",
+      "core",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  },
+  {
+    "title": "Integrate email parsing and markdown conversion into IMAP ingestion flow",
+    "body": "Extend the IMAP ingestion logic to incorporate the new parsing and markdown-generation modules. When reading from the mail server, the system should fetch the raw email bytes, build an EmailRecord, convert the body to markdown, and store all relevant metadata.\n\n**Acceptance Criteria:**\n- IMAP fetch workflow (e.g., `fetch_email` or equivalent) updated to return an EmailRecord.\n- UID and folder fields correctly assigned during ingestion.\n- Markdown conversion runs automatically after parsing.\n- Errors from malformed or oversized messages are caught and logged.\n- Resulting EmailRecord is ready for storage, vectorization, and agent processing.\n- Does not break local `.eml` file ingestion or classification flows.",
+    "labels": [
+      "enhancement",
+      "LLM",
+      "core",
+      "agent:ingestion"
+    ],
+    "milestone": "Phase 1",
+    "projects": [
+      "Xemail Agent"
+    ],
+    "assignees": [
+      "ss2art"
+    ]
+  }
+]
