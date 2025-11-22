@@ -21,6 +21,11 @@ from services.email_markdown import to_markdown
 MAX_EMAIL_BYTES = int(os.getenv("MAX_EMAIL_BYTES", 5 * 1024 * 1024))  # 5MB default
 
 _STRIP_TAGS = {"script", "style", "meta", "object", "iframe", "form", "link"}
+_HTML_SNIPPET_RE = re.compile(r"<[a-zA-Z][^>]*>")
+
+
+def _looks_like_html(text: str) -> bool:
+    return bool(text and _HTML_SNIPPET_RE.search(text))
 
 
 def _decode_part(part: EmailMessage) -> str:
@@ -49,9 +54,30 @@ def _clean_html(html: str) -> Tuple[str, str]:
         if not src or src.startswith("cid:"):
             img.decompose()
     cleaned_html = soup.decode()
-    text = soup.get_text(separator=" ")
-    text = re.sub(r"\s+", " ", text).strip()
+    # Preserve paragraph breaks by using newlines, then collapse multi-blank lines
+    text = soup.get_text(separator="\n")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{2,}", "\n\n", text)
+    text = text.strip()
     return cleaned_html, text
+
+
+def _html_to_text(html: str) -> str:
+    """Convert HTML to readable plain text with link URLs included."""
+    if not html:
+        return ""
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in list(soup.find_all(_STRIP_TAGS)):
+        tag.decompose()
+    for a in soup.find_all("a"):
+        href = a.get("href") or ""
+        label = a.get_text(" ", strip=True)
+        replacement = f"{label}: {href}" if href else label
+        a.replace_with(replacement)
+    text = soup.get_text(separator="\n")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{2,}", "\n\n", text)
+    return text.strip()
 
 
 def _collect_bodies(msg: EmailMessage) -> Tuple[Optional[str], Optional[str]]:
@@ -108,8 +134,13 @@ def parse_email_bytes(raw_bytes: bytes, source: Optional[str] = None) -> EmailRe
     msg = BytesParser(policy=policy.default).parsebytes(raw_bytes)
 
     html_body, text_body = _collect_bodies(msg)
+    # Some providers stuff HTML into text/plain; if so, treat as HTML
+    if not html_body and text_body and _looks_like_html(text_body):
+        html_body, text_body = text_body, None
+
     cleaned_html, cleaned_text_from_html = _clean_html(html_body or "")
-    primary_text = text_body or cleaned_text_from_html
+    html_text = _html_to_text(cleaned_html)
+    primary_text = text_body or html_text or cleaned_text_from_html
     body_markdown = to_markdown(
         subject=msg.get("subject", ""),
         from_addr=msg.get("from", ""),

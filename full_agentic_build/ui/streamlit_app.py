@@ -216,7 +216,7 @@ with tab4:
                 body_content = "\n".join(header_lines + ["", body or ""])
             else:
                 body = _markdown_from_record(rec)
-                body_content = body
+                body_content = "\n".join(header_lines + ["", body or ""])
             st.code(body_content or "")
             if DEBUG_MODE:
                 st.markdown("**Full record (debug):**")
