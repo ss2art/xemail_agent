@@ -1,5 +1,5 @@
 # --- Cross-platform imports & dotenv ---
-import sys, os, threading
+import sys, os, json, threading
 from pathlib import Path
 from datetime import datetime
 
@@ -22,6 +22,7 @@ from agents.semantic_agent import search
 from agents.discovery_agent import remember_topic
 from services.embeddings_service import get_vectorstore, clear_vectorstore
 from services.storage_service import load_corpus, save_corpus, add_items, clear_corpus
+from services.email_markdown import to_markdown
 
 # UI descriptor for the entire set of read emails (do not change function names)
 COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
@@ -31,6 +32,7 @@ VECTOR_DIR = os.getenv("VECTOR_DIR", str(Path(DATA_DIR) / "vectorstore"))
 st.set_page_config(page_title="Email Intelligence Agent - Full Build v4", layout="wide")
 st.title("Email Intelligence Agent - Full Build v4")
 
+DEBUG_MODE = "--debug" in sys.argv
 # Initialize LLM & Vectorstore
 try:
     llm = create_llm()
@@ -75,6 +77,21 @@ def _index_size(vs) -> int:
             return len(data.get("ids", []))
         except Exception:
             return 0
+
+
+def _markdown_from_record(rec: dict) -> str:
+    """Reconstruct markdown if not already present."""
+    if rec.get("body_markdown"):
+        return rec["body_markdown"]
+    return to_markdown(
+        subject=rec.get("subject", "") or "",
+        from_addr=rec.get("from", "") or rec.get("from_addr", "") or "",
+        to_addrs=rec.get("to", []) or [],
+        date=rec.get("date", "") or "",
+        message_id=rec.get("message_id", "") or "",
+        body_text=rec.get("body_text") or rec.get("text") or "",
+        body_html=rec.get("body_html") or rec.get("raw") or "",
+    )
 
 
 with st.sidebar:
@@ -167,15 +184,43 @@ with tab4:
     if data:
         df = pd.DataFrame([{
             "subject": d.get("subject",""),
-            "sender": d.get("from",""),
+            "sender": d.get("from","") or d.get("from_addr",""),
             "date": d.get("date",""),
             "category": d.get("category",""),
             "guardrail": d.get("guardrail",{}).get("status",""),
             "guardrail_reason": ", ".join(d.get("guardrail",{}).get("notes", [])),
             "expired": d.get("temporal",{}).get("status",""),
             "subscription": d.get("subscription",{}).get("is_subscription", False),
+            "attachments": len(d.get("attachments", [])),
+            "folder": d.get("folder",""),
+            "uid": d.get("uid",""),
         } for d in data])
         st.dataframe(df, width="stretch")
+        with st.expander("Email details preview"):
+            idx = st.number_input("Row", min_value=0, max_value=len(data)-1, value=0, step=1)
+            rec = data[int(idx)]
+            view_mode = st.selectbox("View as", ["Markdown", "Plain Text", "Raw HTML"], index=0)
+            header_lines = [
+                f"**Subject:** {rec.get('subject','')}",
+                f"From: {rec.get('from','') or rec.get('from_addr','')}",
+                f"To: {', '.join(rec.get('to', []) or [])}",
+                f"Date: {rec.get('date','')}",
+                f"Message-ID: {rec.get('message_id','')}",
+                f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}",
+            ]
+            if view_mode == "Plain Text":
+                body = rec.get("body_text") or rec.get("text") or rec.get("raw","")
+                body_content = "\n".join(header_lines + ["", body or ""])
+            elif view_mode == "Raw HTML":
+                body = rec.get("body_html") or rec.get("raw","")
+                body_content = "\n".join(header_lines + ["", body or ""])
+            else:
+                body = _markdown_from_record(rec)
+                body_content = "\n".join(header_lines + ["", body or ""])
+            st.code(body_content or "")
+            if DEBUG_MODE:
+                st.markdown("**Full record (debug):**")
+                st.code(json.dumps(rec, ensure_ascii=False, indent=2))
     else:
         st.info("No data yet.")
 

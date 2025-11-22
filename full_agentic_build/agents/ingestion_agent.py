@@ -1,7 +1,19 @@
 import os, glob
-from email import policy
-from email.parser import BytesParser
 from typing import List, Dict
+
+from services.email_parser import parse_email_bytes
+from services.email_record import EmailRecord
+
+
+def _record_to_payload(rec: EmailRecord) -> Dict:
+    """Return a dict compatible with existing pipeline expectations."""
+    data = rec.to_dict()
+    # Legacy keys used elsewhere
+    data["from"] = rec.from_addr
+    data["raw"] = rec.body_raw
+    data["text"] = rec.body_text
+    return data
+
 
 def load_eml_folder(folder: str) -> List[Dict]:
     items = []
@@ -10,16 +22,9 @@ def load_eml_folder(folder: str) -> List[Dict]:
     for path in glob.glob(os.path.join(folder, "*.eml")):
         try:
             with open(path, "rb") as f:
-                msg = BytesParser(policy=policy.default).parse(f)
-            raw = msg.get_body(preferencelist=("html","plain"))
-            payload = raw.get_content() if raw else ""
-            items.append({
-                "path": path,
-                "subject": msg.get("subject", ""),
-                "from": msg.get("from", ""),
-                "date": msg.get("date", ""),
-                "raw": payload
-            })
+                raw_bytes = f.read()
+            rec = parse_email_bytes(raw_bytes, source=path)
+            items.append(_record_to_payload(rec))
         except Exception as e:
             items.append({"path": path, "error": str(e)})
     return items

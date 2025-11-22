@@ -1,0 +1,2 @@
+streamlit run full_agentic_build/ui/streamlit_app.py -- --debug
+.venv\Scripts\streamlit run full_agentic_build/ui/streamlit_app.py -- --debug
