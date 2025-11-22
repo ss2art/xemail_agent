@@ -89,7 +89,7 @@ set +e
 set +o pipefail
 
 idx=0
-# iterate JSON objects safely (command substitution works reliably on Windows bash)
+# iterate JSON objects safely (command substitution feeds the loop)
 while IFS= read -r row; do
   idx=$((idx+1))
   title=$($JQ -r '.title // empty' <<<"$row")
@@ -195,7 +195,7 @@ while IFS= read -r row; do
       fi
     fi
   fi
-done
+done <<<"$($JQ -c '.[]' "$ISSUES_JSON")"
 
 # Restore strict modes after pipeline
 set -euo pipefail
