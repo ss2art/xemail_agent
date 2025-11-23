@@ -221,7 +221,7 @@ with tab3:
                     for h in hits
                 ]
             )
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width="stretch")
             if st.checkbox("Remember this topic for future classifications?"):
                 remember_topic(vectorstore, query)
                 st.info("Topic remembered.")
