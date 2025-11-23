@@ -215,36 +215,48 @@ with tab3:
             if category_label.strip():
                 st.caption(f"Applied category label: {category_label.strip()}")
 
-            corpus = { (item.get("uid") or item.get("message_id")): item for item in load_corpus() }
+            corpus = {(item.get("uid") or item.get("message_id")): item for item in load_corpus()}
+            if "search_expanded" not in st.session_state:
+                st.session_state["search_expanded"] = None
 
-            summary_rows = []
-            for idx, h in enumerate(hits, start=1):
+            # Header row
+            hcols = st.columns([3, 2, 2, 2, 1])
+            hcols[0].markdown("**Subject**")
+            hcols[1].markdown("**Sender**")
+            hcols[2].markdown("**Date**")
+            hcols[3].markdown("**Categories**")
+            hcols[4].markdown("**Score**")
+
+            for idx, h in enumerate(hits):
                 subject = h.get("subject") or "(no subject)"
                 sender = h.get("sender") or "(unknown sender)"
                 date = h.get("date") or ""
                 categories = ", ".join(h.get("categories") or [])
                 score = h.get("score")
-                summary_rows.append({
-                    "subject": subject,
-                    "sender": sender,
-                    "date": date,
-                    "categories": categories,
-                    "score": score,
-                })
-                title = f"{idx}. {subject} — {sender} ({date})"
-                with st.expander(title):
-                    st.caption(f"Categories: {categories or 'n/a'}")
-                    st.caption(f"Score: {score if score is not None else 'n/a'}")
-                    st.markdown(f"**Snippet:** {h.get('snippet','') or '(none)'}")
-                    rec = corpus.get(h.get("id"))
-                    if rec:
-                        st.markdown("**Full content:**")
-                        st.code(_markdown_from_record(rec) or "", language="markdown")
-                    else:
-                        st.info("Full content not found in corpus; showing snippet only.")
+                is_expanded = st.session_state.get("search_expanded") == h.get("id")
 
-            st.markdown("---")
-            st.dataframe(pd.DataFrame(summary_rows), width="stretch")
+                cols = st.columns([3, 2, 2, 2, 1])
+                btn_label = "▼ " if is_expanded else "▶ "
+                if cols[0].button(f"{btn_label}{subject}", key=f"expand_{idx}"):
+                    st.session_state["search_expanded"] = None if is_expanded else h.get("id")
+                    st.rerun()
+                cols[1].write(sender)
+                cols[2].write(date)
+                cols[3].write(categories or "n/a")
+                cols[4].write(f"{score:.3f}" if isinstance(score, (int, float)) else "n/a")
+
+                if is_expanded:
+                    rec = corpus.get(h.get("id"))
+                    snippet = h.get("snippet", "") or "(none)"
+                    with st.container():
+                        st.caption(f"Categories: {categories or 'n/a'}  |  Score: {score if score is not None else 'n/a'}")
+                        st.markdown(f"**Snippet:** {snippet}")
+                        if rec:
+                            st.markdown("**Full content:**")
+                            st.code(_markdown_from_record(rec) or "", language="markdown")
+                        else:
+                            st.info("Full content not found in corpus; showing snippet only.")
+                    st.markdown("---")
 
             if st.checkbox("Remember this topic for future classifications?"):
                 remember_topic(vectorstore, query)
