@@ -18,11 +18,11 @@ import pandas as pd
 from utils.llm_utils import create_llm
 from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
-from agents.semantic_agent import search
 from agents.discovery_agent import remember_topic
 from services.embeddings_service import get_vectorstore, clear_vectorstore
 from services.storage_service import load_corpus, save_corpus, add_items, clear_corpus
 from services.email_markdown import to_markdown
+from services.search_service import search_emails, get_limit_defaults
 
 # UI descriptor for the entire set of read emails (do not change function names)
 COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
@@ -63,6 +63,7 @@ except Exception as e:
     st.stop()
 
 vectorstore = get_vectorstore(VECTOR_DIR)
+DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT = get_limit_defaults()
 
 
 def _human_bytes(n: int) -> str:
@@ -189,10 +190,37 @@ with tab2:
 with tab3:
     st.subheader("Semantic Topic Search")
     query = st.text_input("Enter a topic (e.g., Role Playing Games, Job offer, Promotion)")
+    col_limit, col_category = st.columns(2)
+    with col_limit:
+        limit = st.number_input(
+            "Max results",
+            min_value=1,
+            max_value=MAX_SEARCH_LIMIT,
+            value=DEFAULT_SEARCH_LIMIT,
+            step=1,
+        )
+    with col_category:
+        category_label = st.text_input("Optional category label to tag matches")
+
     if st.button("Search") and query:
-        hits = search(vectorstore, query, k=8)
+        hits = search_emails(vectorstore, query=query, limit=int(limit), category_name=category_label.strip() or None)
         if hits:
-            st.write([{"meta": h.metadata, "preview": h.page_content[:200]} for h in hits])
+            df = pd.DataFrame(
+                [
+                    {
+                        "subject": h.get("subject", ""),
+                        "sender": h.get("sender", ""),
+                        "date": h.get("date", ""),
+                        "category": h.get("category"),
+                        "categories": ", ".join(h.get("categories") or []),
+                        "applied_category": h.get("applied_category"),
+                        "score": h.get("score"),
+                        "snippet": h.get("snippet", ""),
+                    }
+                    for h in hits
+                ]
+            )
+            st.dataframe(df, use_container_width=True)
             if st.checkbox("Remember this topic for future classifications?"):
                 remember_topic(vectorstore, query)
                 st.info("Topic remembered.")

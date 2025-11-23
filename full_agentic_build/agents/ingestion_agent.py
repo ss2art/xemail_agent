@@ -3,6 +3,7 @@ from typing import List, Dict
 
 from services.email_parser import parse_email_bytes
 from services.email_record import EmailRecord
+from services.storage_service import ensure_uid
 
 
 def _record_to_payload(rec: EmailRecord) -> Dict:
@@ -12,6 +13,7 @@ def _record_to_payload(rec: EmailRecord) -> Dict:
     data["from"] = rec.from_addr
     data["raw"] = rec.body_raw
     data["text"] = rec.body_text
+    ensure_uid(data)
     return data
 
 
