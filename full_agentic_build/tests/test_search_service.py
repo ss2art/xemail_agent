@@ -136,3 +136,17 @@ def test_validate_category_name_enforces_rules():
             assert False, f"Expected validation failure for: {bad!r}"
         except ValueError:
             pass
+
+
+def test_search_emails_rejects_invalid_category(monkeypatch):
+    """
+    search_emails should raise for invalid category/tag inputs.
+    """
+    print("Test: search_emails rejects invalid category names")
+    monkeypatch.setattr(search_service, "load_corpus", lambda: [])
+    vector = _FakeVectorNoScores([])
+    try:
+        search_emails(vector, query="q", category_name="bad!name")
+        assert False, "Expected ValueError for invalid category_name"
+    except ValueError:
+        pass

@@ -34,3 +34,15 @@ docker compose up email-agent-full
   - Default: `streamlit run full_agentic_build/ui/streamlit_app.py`
   - Debug (shows full EmailRecord JSON under previews): `streamlit run full_agentic_build/ui/streamlit_app.py -- --debug`
   - With venv on Windows: `.venv\Scripts\streamlit run full_agentic_build/ui/streamlit_app.py`
+
+## Search and categories
+
+- Use the **Semantic Topic Search** tab to enter a query and set the result limit (validated against env defaults). A dropdown lets you filter results by existing categories.
+- Optionally provide a category label to tag matched emails; labels are persisted to the corpus (multi-category supported) and shown in the results summary.
+- Results are shown in a single expandable table (subject/sender/date/categories/score); click a subject to reveal full content inline.
+- Clearing the vector store and re-running classification re-embeds emails with updated categories; embeddings are upserted by stable IDs to avoid duplicates.
+
+## Testing
+
+- Run search service tests: `.\.venv\Scripts\python.exe -m pytest full_agentic_build/tests/test_search_service.py`
+- To view test printouts, add `-s`.
