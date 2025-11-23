@@ -7,10 +7,13 @@ Uses the shared root environment, requirements, and data directory.
 1. Ensure the root venv is set up and requirements installed (`python -m venv .venv && .\.venv\Scripts\Activate.ps1 && pip install -r requirements.txt`).
 2. Make sure root `.env` is populated (copy `.env.example` if needed) with `OPENAI_API_KEY`, `LLM_MODEL`, etc.
 3. Start Streamlit:
+
    ```powershell
    python -m streamlit run full_agentic_build/ui/streamlit_app.py --server.address=0.0.0.0 --server.port=7860
    ```
+
 4. (Optional) Quick smoke of key deps:
+
    ```powershell
    .\.venv\Scripts\python.exe -c "import langchain, langchain_openai, openai, chromadb; print('ok')"
    ```
@@ -22,6 +25,7 @@ Uses the shared root environment, requirements, and data directory.
 ## Docker
 
 Built from the single root `Dockerfile`/`docker-compose.yml`. Example:
+
 ```powershell
 docker compose up email-agent-full
 ```
