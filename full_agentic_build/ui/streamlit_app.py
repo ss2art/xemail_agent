@@ -204,24 +204,48 @@ with tab3:
         category_label = st.text_input("Optional category label to tag matches")
 
     if st.button("Search") and query:
-        hits = search_emails(vectorstore, query=query, limit=int(limit), category_name=category_label.strip() or None)
+        try:
+            hits = search_emails(vectorstore, query=query, limit=int(limit), category_name=category_label.strip() or None)
+        except Exception as e:
+            st.error(f"Search failed: {e}")
+            hits = []
+
         if hits:
-            df = pd.DataFrame(
-                [
-                    {
-                        "subject": h.get("subject", ""),
-                        "sender": h.get("sender", ""),
-                        "date": h.get("date", ""),
-                        "category": h.get("category"),
-                        "categories": ", ".join(h.get("categories") or []),
-                        "applied_category": h.get("applied_category"),
-                        "score": h.get("score"),
-                        "snippet": h.get("snippet", ""),
-                    }
-                    for h in hits
-                ]
-            )
-            st.dataframe(df, width="stretch")
+            st.markdown(f"Showing **{len(hits)}** result(s) (limit **{int(limit)}**) for query: `{query}`")
+            if category_label.strip():
+                st.caption(f"Applied category label: {category_label.strip()}")
+
+            corpus = { (item.get("uid") or item.get("message_id")): item for item in load_corpus() }
+
+            summary_rows = []
+            for idx, h in enumerate(hits, start=1):
+                subject = h.get("subject") or "(no subject)"
+                sender = h.get("sender") or "(unknown sender)"
+                date = h.get("date") or ""
+                categories = ", ".join(h.get("categories") or [])
+                score = h.get("score")
+                summary_rows.append({
+                    "subject": subject,
+                    "sender": sender,
+                    "date": date,
+                    "categories": categories,
+                    "score": score,
+                })
+                title = f"{idx}. {subject} — {sender} ({date})"
+                with st.expander(title):
+                    st.caption(f"Categories: {categories or 'n/a'}")
+                    st.caption(f"Score: {score if score is not None else 'n/a'}")
+                    st.markdown(f"**Snippet:** {h.get('snippet','') or '(none)'}")
+                    rec = corpus.get(h.get("id"))
+                    if rec:
+                        st.markdown("**Full content:**")
+                        st.code(_markdown_from_record(rec) or "", language="markdown")
+                    else:
+                        st.info("Full content not found in corpus; showing snippet only.")
+
+            st.markdown("---")
+            st.dataframe(pd.DataFrame(summary_rows), width="stretch")
+
             if st.checkbox("Remember this topic for future classifications?"):
                 remember_topic(vectorstore, query)
                 st.info("Topic remembered.")
