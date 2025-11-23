@@ -15,3 +15,7 @@ streamlit
 beautifulsoup4
 pandas
 python-dotenv
+
+# Testing / linting
+pytest
+ruff
