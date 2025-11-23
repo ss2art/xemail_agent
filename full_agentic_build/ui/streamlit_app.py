@@ -203,7 +203,15 @@ with tab3:
     with col_category:
         category_label = st.text_input("Optional category label to tag matches")
     with col_filter:
-        filter_category = st.text_input("Filter results by category (optional)")
+        all_categories = sorted({
+            c
+            for item in load_corpus()
+            for c in (item.get("categories") or [])
+            if c
+        })
+        filter_options = ["(All)"] + all_categories
+        filter_selection = st.selectbox("Filter results by category", options=filter_options, index=0)
+        filter_category = None if filter_selection == "(All)" else filter_selection
 
     # Initialize search session storage
     if "search_results" not in st.session_state:
@@ -220,7 +228,7 @@ with tab3:
                 query=query,
                 limit=int(limit),
                 category_name=category_label.strip() or None,
-                filter_category=filter_category.strip() or None,
+                filter_category=filter_category,
             )
         except Exception as e:
             st.error(f"Search failed: {e}")
@@ -231,7 +239,7 @@ with tab3:
             "query": query,
             "limit": int(limit),
             "category_label": category_label.strip() or None,
-            "filter_category": filter_category.strip() or None,
+            "filter_category": filter_category,
         }
         st.session_state["search_expanded"] = None
         st.rerun()
