@@ -34,6 +34,14 @@ class _FakeVectorNoScores:
 
 
 def test_search_emails_normalizes_results_and_applies_category(monkeypatch):
+    """
+    Ensure the search service returns normalized result dicts and persists
+    applied category labels to the corpus. Validates:
+    - Limits are respected via env defaults
+    - Categories from corpus metadata are preserved
+    - Applied category propagates to results and is sent to apply_category_label
+    - Scores from similarity_search_with_score are retained
+    """
     monkeypatch.setenv("SEARCH_MAX_LIMIT", "5")
     monkeypatch.setenv("SEARCH_DEFAULT_LIMIT", "3")
     # Provide in-memory corpus to avoid file writes
@@ -65,6 +73,13 @@ def test_search_emails_normalizes_results_and_applies_category(monkeypatch):
 
 
 def test_search_emails_clamps_limit_and_falls_back_without_scores(monkeypatch):
+    """
+    Verify limit clamping and fallback when similarity_search_with_score is
+    unavailable. Validates:
+    - limit > max is clamped to SEARCH_MAX_LIMIT
+    - score is None when using similarity_search fallback
+    - snippets are generated and ids are preserved
+    """
     monkeypatch.setenv("SEARCH_MAX_LIMIT", "2")
     monkeypatch.setenv("SEARCH_DEFAULT_LIMIT", "1")
     monkeypatch.setattr(search_service, "load_corpus", lambda: [])
