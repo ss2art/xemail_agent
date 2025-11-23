@@ -17,6 +17,7 @@ import email
 from email import policy
 import random
 import argparse
+import shutil
 from pathlib import Path
 
 ENRON_URL = "https://www.cs.cmu.edu/~enron/enron_mail_20110402.tgz"
@@ -32,7 +33,7 @@ def download_enron(archive_path):
     print("✅ Downloaded:", archive_path)
 
 
-def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
+def extract_limited_mailboxes(archive_path, extract_to, target_maildir, mailbox_limit, mailbox_offset):
     """
     Extract ONLY the first N folders under maildir/<username>
     Example paths (note archive root prefix):
@@ -40,7 +41,7 @@ def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
       enron_mail_20110402/maildir/arnold-j/
       …
     """
-    print(f"📦 Extracting only first {mailbox_limit} mailboxes…")
+    print(f"📦 Extracting {mailbox_limit} mailboxes starting at offset {mailbox_offset} …")
 
     with tarfile.open(archive_path, "r:gz") as tar:
         members = tar.getmembers()
@@ -57,7 +58,7 @@ def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
                 mailboxes.append(m)
 
         mailboxes = sorted(mailboxes, key=lambda m: m.name)
-        selected = mailboxes[:mailbox_limit]
+        selected = mailboxes[mailbox_offset:mailbox_offset + mailbox_limit]
         if not selected:
             raise RuntimeError("No mailboxes detected in archive; structure may have changed.")
 
@@ -74,7 +75,20 @@ def extract_limited_mailboxes(archive_path, extract_to, mailbox_limit):
 
         tar.extractall(path=extract_to, members=_filtered())
 
-    print("✅ Extracted limited mailboxes.")
+    # Move maildir to the target location, flattening the archive root prefix
+    source_maildir = Path(extract_to) / root_prefix / "maildir"
+    if not source_maildir.exists():
+        raise RuntimeError(f"Extracted maildir not found at {source_maildir}")
+    if target_maildir.exists():
+        shutil.rmtree(target_maildir)
+    shutil.move(str(source_maildir), str(target_maildir))
+    # Optional cleanup of the temporary extracted root
+    try:
+        shutil.rmtree(Path(extract_to) / root_prefix)
+    except Exception:
+        pass
+
+    print(f"✅ Extracted limited mailboxes → {target_maildir}")
 
 
 def collect_email_files(root):
@@ -104,23 +118,26 @@ def parse_and_save(raw_path, out_dir, index):
         f.write(msg.as_string())
 
 
-def main(mailbox_limit, email_limit):
-    archive_path = "data/enron_limited/enron.tgz"
-    extract_to = "data/enron_limited/extracted"
-    out_dir = "data/enron_sample"
-    os.makedirs(out_dir, exist_ok=True)
-    os.makedirs("data/enron_limited", exist_ok=True)
+def main(mailbox_limit, email_limit, mailbox_offset):
+    archive_path = Path("data/enron_limited/enron.tgz")
+    extract_base = Path("data/enron_sample")
+    extract_to = extract_base / "extracted"
+    target_maildir = extract_base / "maildir"
+    out_dir = extract_base / "eml"
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    extract_to.mkdir(parents=True, exist_ok=True)
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
 
     # STEP 1 — Download archive
-    download_enron(archive_path)
+    download_enron(str(archive_path))
 
     # STEP 2 — Extract limited number of mailboxes (if missing or empty)
-    if (not os.path.exists(extract_to)) or (not os.listdir(extract_to)):
-        extract_limited_mailboxes(archive_path, extract_to, mailbox_limit)
+    if (not target_maildir.exists()) or (not any(target_maildir.iterdir())):
+        extract_limited_mailboxes(str(archive_path), str(extract_to), target_maildir, mailbox_limit, mailbox_offset)
 
     # STEP 3 — Find emails inside extracted maildir
-    maildir_root = os.path.join(extract_to, "enron_mail_20110402", "maildir")
-    files = collect_email_files(maildir_root)
+    files = collect_email_files(str(target_maildir))
     sample = random.sample(files, min(email_limit, len(files)))
 
     print(f"✂️ Sampling {len(sample)} emails…")
@@ -139,6 +156,8 @@ if __name__ == "__main__":
                         help="Number of user mailboxes to extract.")
     parser.add_argument("--emails", type=int, default=300,
                         help="Number of emails to sample.")
+    parser.add_argument("--offset", type=int, default=0,
+                        help="Starting mailbox offset (e.g., 3 starts at the 4th mailbox).")
     args = parser.parse_args()
 
-    main(args.mailboxes, args.emails)
+    main(args.mailboxes, args.emails, args.offset)
