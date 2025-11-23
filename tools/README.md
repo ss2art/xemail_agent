@@ -1,7 +1,11 @@
 # Tools directory
 
-Utilities intended for operational tasks (data downloads, issue helpers, CLI diagnostics). These are run directly with the root `.venv` Python or shell.
+Operational helpers run from the repo root (use the root `.venv` Python when applicable):
 
-- `create_issues.sh`: helper to open GitHub issues from `data/issues.json` (default). Supports labels/projects/assignees. Use `--file PATH` to point at a different JSON file; `--dry-run` prints the `gh issue create` commands without running; `--continue-on-error` logs failed creates but keeps going.
+- `create_issues.sh` — Create GitHub issues from a JSON file (default: `data/issues.json`). Flags: `--file PATH`, `--dry-run`, `--continue-on-error`, `--verbose`, `--help`.
+- `download_and_extract_enron.py` — Download the Enron archive, extract a subset of mailboxes, and sample messages into `.eml` files. Flags: `--mailboxes`, `--offset`, `--emails`, `--help`.
+- `import_test_embeddings.py` — Smoke-test importing `OpenAIEmbeddings` from `langchain` or `langchain_openai`. Flags: `--quiet`, `--help`.
+- `llm_smoke.py` — Lightweight LLM invocation check for `barebones_starter` or `full_agentic_build`. Flags: `--subproject`, `--help`.
+- `verify_llm.py` — Validates `create_llm()` wiring and runs a short prompt. Flags: `--prompt`, `--model`, `--help`.
 
-Development/CI helper scripts that maintain the repo (hooks, lint runners, etc.) live under `scripts/`.
+Development/CI helper scripts that maintain the repo (hooks, lint runners, rebuilds) live under `scripts/`.

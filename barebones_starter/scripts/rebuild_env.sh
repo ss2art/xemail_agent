@@ -1,4 +1,26 @@
 #!/bin/bash
+
+usage() {
+    cat <<'USAGE'
+Usage: rebuild_env.sh [--help|-h]
+
+Rebuilds the shared root Python virtual environment and installs requirements.txt.
+
+Options:
+  --help, -h   Show this help message and exit
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(--help|-h)$ ]]; then
+    usage
+    exit 0
+fi
+if [[ $# -gt 0 ]]; then
+    echo "Unknown option: $1" >&2
+    usage
+    exit 1
+fi
+
 echo "====================================="
 echo " Rebuild shared Python Environment"
 echo "====================================="

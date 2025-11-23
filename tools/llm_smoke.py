@@ -108,7 +108,10 @@ def run_for(subproject: str):
 
 
 def main():
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description="Run a minimal LLM smoke test for one or both subprojects.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     p.add_argument('--subproject', choices=['barebones_starter', 'full_agentic_build'], help='Run smoke test for the given subproject. If omitted, runs both.')
     args = p.parse_args()
 

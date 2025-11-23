@@ -8,6 +8,19 @@ Usage: run from repository root in PowerShell:
   .\scripts\check_env_and_lint.ps1
 #>
 
+param(
+    [Alias('h')][switch]$help
+)
+
+if ($help) {
+    Write-Output "Usage: .\scripts\check_env_and_lint.ps1 [--help|-h]"
+    Write-Output ""
+    Write-Output "Runs llm_smoke for each subproject using the root virtual environment and optionally runs ruff."
+    Write-Output "Options:"
+    Write-Output "  --help, -h   Show this help message and exit."
+    return
+}
+
 $root = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Write-Output "Repository root: $root"
 

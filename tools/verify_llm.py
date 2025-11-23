@@ -5,6 +5,7 @@ project-level create_llm() adapters work. Run from repo root:
     python tools/verify_llm.py
 """
 
+import argparse
 import importlib
 import importlib.util
 import os
@@ -45,8 +46,23 @@ def load_create_llm_from(subproject: str):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Validate LLM configuration by instantiating create_llm() and exercising common call paths.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--prompt",
+        default="Say hello and identify your model name.",
+        help="Prompt to send to the LLM during verification.",
+    )
+    parser.add_argument(
+        "--model",
+        help="Override the model name instead of using $LLM_MODEL or the default.",
+    )
+    args = parser.parse_args()
+
     api_key = os.getenv("OPENAI_API_KEY")
-    model_name = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    model_name = args.model or os.getenv("LLM_MODEL", "gpt-4o-mini")
 
     if not api_key:
         print("ERROR: OPENAI_API_KEY not found. Please populate the root .env file.")
@@ -73,7 +89,7 @@ def main():
         traceback.print_exc()
         raise
 
-    prompt = "Say hello and identify your model name."
+    prompt = args.prompt
 
     def try_callable(obj):
         try:
