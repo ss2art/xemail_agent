@@ -1,5 +1,5 @@
 # --- Cross-platform imports & dotenv ---
-import sys, os, json, threading
+import sys, os, json, threading, subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -29,8 +29,29 @@ COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
 DATA_DIR = os.getenv("DATA_DIR", str(REPO_ROOT / "data"))
 VECTOR_DIR = os.getenv("VECTOR_DIR", str(Path(DATA_DIR) / "vectorstore"))
 
-st.set_page_config(page_title="Email Intelligence Agent - Full Build v4", layout="wide")
-st.title("Email Intelligence Agent - Full Build v4")
+def _version_label(default: str = "v6") -> str:
+    """Resolve app version from env or latest git tag; fall back to default."""
+    env_ver = os.getenv("APP_VERSION") or os.getenv("BUILD_TAG")
+    if env_ver:
+        return env_ver
+    try:
+        out = subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            cwd=REPO_ROOT,
+            stderr=subprocess.DEVNULL,
+        )
+        tag = out.decode().strip()
+        if tag:
+            return tag
+    except Exception:
+        pass
+    return default
+
+
+VERSION = _version_label()
+TITLE = f"Email Intelligence Agent - Full Build {VERSION}"
+st.set_page_config(page_title=TITLE, layout="wide")
+st.title(TITLE)
 
 DEBUG_MODE = "--debug" in sys.argv
 # Initialize LLM & Vectorstore
