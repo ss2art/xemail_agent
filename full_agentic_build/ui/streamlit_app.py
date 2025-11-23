@@ -269,15 +269,13 @@ with tab3:
 
             if is_expanded:
                 rec = corpus.get(h.get("id"))
-                snippet = h.get("snippet", "") or "(none)"
                 with st.container():
                     st.caption(f"Categories: {categories or 'n/a'}  |  Score: {score if score is not None else 'n/a'}")
-                    st.markdown(f"**Snippet:** {snippet}")
                     if rec:
                         st.markdown("**Full content:**")
                         st.code(_markdown_from_record(rec) or "", language="markdown")
                     else:
-                        st.info("Full content not found in corpus; showing snippet only.")
+                        st.info("Full content not found in corpus.")
                 st.markdown("---")
 
         if st.checkbox("Remember this topic for future classifications?"):
