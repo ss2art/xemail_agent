@@ -86,14 +86,32 @@ def search_emails(
             corpus_by_id[identifier] = item
 
     results: List[Dict[str, Any]] = []
+    def _category_list(value: Any) -> List[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            value = value.strip()
+            return [value] if value else []
+        if isinstance(value, list):
+            # Filter to simple scalars
+            out = []
+            for v in value:
+                if isinstance(v, str):
+                    if v.strip():
+                        out.append(v.strip())
+                elif isinstance(v, (int, float, bool)):
+                    out.append(str(v))
+            return out
+        return []
+
     for doc, score in raw_hits[:k]:
         metadata = getattr(doc, "metadata", {}) or {}
         content = getattr(doc, "page_content", "") or ""
         uid = metadata.get("uid") or metadata.get("message_id") or metadata.get("id")
         if not uid:
             uid = ensure_uid(metadata)
-        corpus_categories = corpus_by_id.get(uid, {}).get("categories") or []
-        categories = corpus_categories or metadata.get("categories") or []
+        corpus_categories = _category_list(corpus_by_id.get(uid, {}).get("categories"))
+        categories = corpus_categories or _category_list(metadata.get("categories"))
         if category_name and category_name not in categories:
             categories = [*categories, category_name]
         results.append(

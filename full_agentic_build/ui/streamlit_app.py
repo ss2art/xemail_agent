@@ -181,9 +181,10 @@ with tab2:
         if not data:
             st.warning(f"{COLLECTION_LABEL} is empty. Load emails first.")
         else:
-            results = process_batch(llm, vectorstore, data)
-            save_corpus(results)
-            st.session_state["last_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with st.spinner("Processing emails..."):
+                results = process_batch(llm, vectorstore, data)
+                save_corpus(results)
+                st.session_state["last_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             st.success(f"Processed {len(results)} emails.")
             st.rerun()
 

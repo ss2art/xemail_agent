@@ -37,11 +37,12 @@ def process_batch(llm, vectorstore, items: List[Dict]) -> List[Dict]:
         enriched = {**it, "uid": uid, "text": text, "category": category, "categories": categories, "temporal": temporal, "subscription": subscription, "guardrail": guard}
         results.append(enriched)
         if text:
+            meta_categories = ", ".join(categories) if categories else None
             meta = {
                 "subject": it.get("subject",""),
                 "from": it.get("from") or it.get("from_addr",""),
                 "category": category,
-                "categories": categories,
+                "categories": meta_categories,
                 "date": it.get("date",""),
                 "id": uid,
                 "uid": uid,
