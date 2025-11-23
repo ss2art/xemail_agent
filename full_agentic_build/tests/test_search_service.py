@@ -53,6 +53,7 @@ def test_search_emails_normalizes_results_and_applies_category(monkeypatch):
     applied_ids = []
     monkeypatch.setattr(search_service, "apply_category_label", lambda ids, category: applied_ids.extend(ids) or True)
 
+    print("Test: normalize results, apply category, preserve scores and categories")
     docs = [
         (Document(page_content="Alpha body text", metadata={"uid": "1", "subject": "Alpha", "from": "a@test", "date": "2024-01-01", "category": "Marketing"}), 0.1),
         (Document(page_content="Beta body text", metadata={"uid": "2", "subject": "Beta", "from": "b@test", "date": "2024-01-02", "category": "Job"}), 0.2),
@@ -84,6 +85,7 @@ def test_search_emails_clamps_limit_and_falls_back_without_scores(monkeypatch):
     monkeypatch.setenv("SEARCH_DEFAULT_LIMIT", "1")
     monkeypatch.setattr(search_service, "load_corpus", lambda: [])
     monkeypatch.setattr(search_service, "apply_category_label", lambda ids, category: True)
+    print("Test: clamp limit and fallback path when scores are unavailable")
     docs = [
         Document(page_content="First doc content", metadata={"uid": "a"}),
         Document(page_content="Second doc content", metadata={"uid": "b"}),
@@ -107,6 +109,7 @@ def test_search_emails_filters_by_category(monkeypatch):
     monkeypatch.setenv("SEARCH_DEFAULT_LIMIT", "5")
     monkeypatch.setattr(search_service, "load_corpus", lambda: [])
     monkeypatch.setattr(search_service, "apply_category_label", lambda ids, category: True)
+    print("Test: filter results by category (case-insensitive)")
     docs = [
         (Document(page_content="Doc one", metadata={"uid": "1", "categories": ["Finance"]}), 0.1),
         (Document(page_content="Doc two", metadata={"uid": "2", "categories": ["finance", "job"]}), 0.2),
@@ -124,6 +127,7 @@ def test_validate_category_name_enforces_rules():
     """
     Validate category name guardrails (non-empty, length, allowed chars).
     """
+    print("Test: validate category name rules and failure cases")
     assert validate_category_name("Finance-2025") == "Finance-2025"
     assert validate_category_name(None) is None
     for bad in ["", "   ", "x" * 65, "name!"]:
