@@ -53,7 +53,7 @@ def test_search_emails_normalizes_results_and_applies_category(monkeypatch):
     applied_ids = []
     monkeypatch.setattr(search_service, "apply_category_label", lambda ids, category: applied_ids.extend(ids) or True)
 
-    print("Test: normalize results, apply category, preserve scores and categories")
+    print("\n Test: normalize results, apply category, preserve scores and categories")
     docs = [
         (Document(page_content="Alpha body text", metadata={"uid": "1", "subject": "Alpha", "from": "a@test", "date": "2024-01-01", "category": "Marketing"}), 0.1),
         (Document(page_content="Beta body text", metadata={"uid": "2", "subject": "Beta", "from": "b@test", "date": "2024-01-02", "category": "Job"}), 0.2),
