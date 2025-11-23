@@ -17,6 +17,7 @@ _HTML_SNIPPET_RE = re.compile(r"<[a-zA-Z][^>]*>")
 
 
 def _looks_like_html(text: str) -> bool:
+    """Return True if the text contains HTML-like tags."""
     return bool(text and _HTML_SNIPPET_RE.search(text))
 
 
@@ -54,6 +55,7 @@ def _html_to_markdown(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     def convert(node) -> str:
+        """Recursively convert HTML nodes to markdown-like text."""
         if hasattr(node, "children"):
             tag = getattr(node, "name", "").lower()
         else:

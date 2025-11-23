@@ -15,21 +15,30 @@ from services.search_service import search_emails, validate_category_name  # typ
 
 
 class _FakeVectorWithScores:
+    """Stub vector store that supports similarity_search_with_score."""
+
     def __init__(self, docs_with_scores: List[Tuple[Document, float]]):
+        """Store documents with scores for deterministic responses."""
         self.docs_with_scores = docs_with_scores
 
     def similarity_search_with_score(self, query: str, k: int = 5):
+        """Return the first k documents with attached scores."""
         return self.docs_with_scores[:k]
 
 
 class _FakeVectorNoScores:
+    """Stub vector store lacking similarity_search_with_score to test fallback."""
+
     def __init__(self, docs: List[Document]):
+        """Store documents without scores for fallback testing."""
         self.docs = docs
 
     def similarity_search_with_score(self, query: str, k: int = 5):
+        """Raise to exercise the fallback path."""
         raise AttributeError("no similarity_search_with_score")
 
     def similarity_search(self, query: str, k: int = 5):
+        """Return the first k documents without scores."""
         return self.docs[:k]
 
 

@@ -8,7 +8,7 @@ from services.storage_service import apply_category_label, ensure_uid, load_corp
 
 
 def _limit_bounds() -> Tuple[int, int]:
-    """Return (default_limit, max_limit) parsed from environment."""
+    """Return (default_limit, max_limit) parsed from environment with sane floors."""
     try:
         default_limit = int(os.getenv("SEARCH_DEFAULT_LIMIT", "8"))
     except Exception:
@@ -24,6 +24,7 @@ def _limit_bounds() -> Tuple[int, int]:
 
 
 def _normalize_limit(limit: Optional[int]) -> int:
+    """Clamp requested limit to configured bounds."""
     default_limit, max_limit = _limit_bounds()
     if limit is None:
         return default_limit
@@ -37,7 +38,17 @@ def _normalize_limit(limit: Optional[int]) -> int:
 
 
 def _search_with_scores(vectorstore, query: str, k: int):
-    """Attempt similarity_search_with_score with safe fallback to similarity_search."""
+    """
+    Attempt similarity_search_with_score with safe fallback to similarity_search.
+
+    Args:
+        vectorstore: Vector store client supporting similarity search.
+        query: Query text.
+        k: Number of hits to request.
+
+    Returns:
+        List of (Document, score) tuples; score is None on fallback.
+    """
     try:
         return vectorstore.similarity_search_with_score(query, k=k)
     except Exception:
@@ -49,6 +60,7 @@ def _search_with_scores(vectorstore, query: str, k: int):
 
 
 def _snippet(text: str, length: int = 200) -> str:
+    """Collapse whitespace and trim to a fixed preview length."""
     if not text:
         return ""
     clean = " ".join(text.split())
@@ -112,6 +124,7 @@ def search_emails(
 
     results: List[Dict[str, Any]] = []
     def _category_list(value: Any) -> List[str]:
+        """Normalize categories field to a list of strings."""
         if value is None:
             return []
         if isinstance(value, str):

@@ -1,5 +1,8 @@
-import os, glob
-from typing import List, Dict
+"""Load .eml files from disk and normalize into pipeline-ready dicts."""
+
+import glob
+import os
+from typing import Dict, List
 
 from services.email_parser import parse_email_bytes
 from services.email_record import EmailRecord
@@ -18,6 +21,15 @@ def _record_to_payload(rec: EmailRecord) -> Dict:
 
 
 def load_eml_folder(folder: str) -> List[Dict]:
+    """
+    Load all .eml files in the given folder and parse into payload dicts.
+
+    Args:
+        folder: Path to a directory containing .eml files.
+
+    Returns:
+        List of parsed email payloads or error entries for failures.
+    """
     items = []
     if not folder or not os.path.exists(folder):
         return items

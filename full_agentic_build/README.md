@@ -44,5 +44,6 @@ docker compose up email-agent-full
 
 ## Testing
 
-- Run search service tests: `.\.venv\Scripts\python.exe -m pytest full_agentic_build/tests/test_search_service.py`
-- To view test printouts, add `-s`.
+- From an activated project venv, run: `python -m pytest full_agentic_build/tests/test_search_service.py` (Windows: `.\.venv\Scripts\python.exe -m pytest ...`).
+- To view test printouts, add `-s`. If site-packages plugins interfere (e.g., capture errors), run with `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`.
+- A lightweight smoke test checks Streamlit entrypoints with stubbed LLM/vectorstore deps: `python -m pytest full_agentic_build/tests/test_streamlit_smoke.py`.

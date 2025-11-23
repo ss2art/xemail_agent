@@ -21,6 +21,10 @@
 - Full build UI: `python -m streamlit run full_agentic_build/ui/streamlit_app.py --server.port 7860`
 - Shortcuts: `python run_barebones.py` or `python run_full.py` (respects `STREAMLIT_HEADLESS` env; defaults to headless/auto-open disabled)
 
+## Linting
+
+- Run `python -m ruff check .` from the repo root to catch undefined names and other runtime-prone issues (config in `ruff.toml`).
+
 ## Docker (single image for both)
 
 Build once from the repo root:

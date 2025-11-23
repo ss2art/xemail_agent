@@ -1,9 +1,13 @@
+"""LLM adapter utilities for flexible invocation across provider interfaces."""
+
 import os
 from typing import Any
 from langchain_openai import ChatOpenAI
 
 
 class LLMAdapter:
+    """Adapter that normalizes various LLM client call styles to __call__."""
+
     def __init__(self, llm: Any):
         self._llm = llm
         if callable(llm):
@@ -20,6 +24,16 @@ class LLMAdapter:
             self._method = None
 
     def __call__(self, prompt_or_messages, **kwargs):
+        """
+        Invoke the wrapped LLM using its supported interface.
+
+        Args:
+            prompt_or_messages: Prompt string or message list.
+            **kwargs: Additional kwargs passed to the underlying method.
+
+        Returns:
+            Provider-specific response object.
+        """
         if self._method == "callable":
             return self._llm(prompt_or_messages, **kwargs)
         if self._method == "predict":

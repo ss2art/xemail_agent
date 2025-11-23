@@ -1,3 +1,5 @@
+"""LLM-based single-label email classification."""
+
 from langchain_core.prompts import PromptTemplate
 
 PROMPT = PromptTemplate.from_template(
@@ -13,6 +15,16 @@ Email:
 )
 
 def classify_email(llm, email_text: str) -> str:
+    """
+    Classify an email into one of the predefined categories.
+
+    Args:
+        llm: LLM adapter used to run the prompt.
+        email_text: Email body text.
+
+    Returns:
+        Chosen category label string.
+    """
     try:
         resp = llm.invoke(PROMPT.format(email_text=email_text))
     except Exception:

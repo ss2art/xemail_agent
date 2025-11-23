@@ -15,12 +15,18 @@ from agents.controller_agent import process_batch  # type: ignore
 
 
 class _Resp:
+    """Simple response wrapper mirroring langchain message content."""
+
     def __init__(self, content: str):
+        """Store the response content used by the stubbed LLM."""
         self.content = content
 
 
 class FakeLLM:
+    """Minimal LLM stub that returns deterministic responses for prompts."""
+
     def invoke(self, prompt_or_messages: Any, **kwargs):
+        """Return a canned response based on the prompt text."""
         text = str(prompt_or_messages)
         if "expert email triage assistant" in text:
             # classification prompt
@@ -36,18 +42,28 @@ class FakeLLM:
 
 
 class FakeVectorStore:
+    """Vector store stub that records added docs and returns empty searches."""
+
     def __init__(self):
+        """Initialize an in-memory doc list."""
         self._docs = []
 
     def add_documents(self, docs):
+        """Record documents for inspection."""
         self._docs.extend(docs)
 
     def similarity_search(self, query: str, k: int = 5):
-        # Return an empty list for smoke purposes
+        """Return an empty list to avoid external dependency lookups."""
         return []
 
 
 def run() -> int:
+    """
+    Execute the smoke flow: process two emails and assert enrichment outcomes.
+
+    Returns:
+        Exit code 0 on success.
+    """
     os.environ.setdefault("ENABLE_GUARDRAIL", "True")
 
     items = [
@@ -92,4 +108,5 @@ if __name__ == "__main__":
 
 
 def test_full_agent_smoke():
+    """Ensure the smoke runner completes without raising assertions."""
     assert run() == 0
