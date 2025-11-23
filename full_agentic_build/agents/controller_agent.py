@@ -1,16 +1,33 @@
+"""
+Batch controller to run guardrail, classification, and indexing steps.
+"""
+
 import os
 from typing import List, Dict
-from .guardrail_agent import validate_email
+
 from .classification_agent import classify_email
-from .temporal_agent import detect_expired
-from .subscription_agent import detect_subscription
+from .guardrail_agent import validate_email
 from .parsing_agent import extract_text
 from .semantic_agent import index_documents
+from .subscription_agent import detect_subscription
+from .temporal_agent import detect_expired
 from services.storage_service import ensure_uid
 
 ENABLE_GUARDRAIL = os.getenv("ENABLE_GUARDRAIL", "True").lower() == "true"
 
 def process_batch(llm, vectorstore, items: List[Dict]) -> List[Dict]:
+    """
+    Process a batch of email dicts through guardrail, classification, temporal/subscription
+    detection, and vector indexing.
+
+    Args:
+        llm: LLM adapter used for classification and detectors.
+        vectorstore: Vector store to receive embeddings.
+        items: List of email-like dicts to enrich.
+
+    Returns:
+        List of enriched email dicts with categories, guardrail, temporal, and subscription data.
+    """
     results = []
     docs_for_index = []
     for it in items:

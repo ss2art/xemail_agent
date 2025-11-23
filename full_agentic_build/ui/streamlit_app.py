@@ -29,6 +29,11 @@ COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
 DATA_DIR = os.getenv("DATA_DIR", str(REPO_ROOT / "data"))
 VECTOR_DIR = os.getenv("VECTOR_DIR", str(Path(DATA_DIR) / "vectorstore"))
 
+@st.cache_resource(show_spinner=False)
+def _get_llm():
+    # Cache the LLM so Streamlit reruns on UI events don't re-instantiate it.
+    return create_llm()
+
 def _version_label(default: str = "v6") -> str:
     """Resolve app version from env or latest git tag; fall back to default."""
     env_ver = os.getenv("APP_VERSION") or os.getenv("BUILD_TAG")
@@ -56,7 +61,7 @@ st.title(TITLE)
 DEBUG_MODE = "--debug" in sys.argv
 # Initialize LLM & Vectorstore
 try:
-    llm = create_llm()
+    llm = _get_llm()
     st.success("LLM initialized")
 except Exception as e:
     st.error(f"LLM initialization failed: {e}")

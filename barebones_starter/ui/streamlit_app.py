@@ -69,8 +69,13 @@ with st.sidebar:
 
 tab1, tab2 = st.tabs(["Load & Classify", "Results"])
 
+@st.cache_resource(show_spinner=False)
+def _get_llm():
+    # Cache to avoid re-instantiating on each Streamlit rerun.
+    return create_llm()
+
 try:
-    llm = create_llm()
+    llm = _get_llm()
     st.success("LLM initialized successfully!")
 except Exception as e:
     st.error(f"LLM initialization failed: {e}")

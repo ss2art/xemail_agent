@@ -1,7 +1,10 @@
-import os, json
-from uuid import uuid4
+"""Persistent storage helpers for email corpus and UIDs."""
+
+import json
+import os
 from pathlib import Path
-from typing import List, Dict, Any, Iterable, Union
+from typing import Any, Dict, Iterable, List, Union
+from uuid import uuid4
 
 from services.email_record import EmailRecord
 
@@ -23,12 +26,22 @@ def _serialize(items: Iterable[Union[Dict[str, Any], EmailRecord]]) -> List[Dict
 
 
 def _deserialize(raw_items: List[Dict[str, Any]], as_records: bool) -> List[Union[Dict[str, Any], EmailRecord]]:
+    """Convert serialized dicts back into EmailRecord objects when requested."""
     if not as_records:
         return raw_items
     return [EmailRecord.from_dict(item) for item in raw_items]
 
 
 def load_corpus(as_records: bool = False) -> List[Union[Dict[str, Any], EmailRecord]]:
+    """
+    Load the persisted email corpus from JSON.
+
+    Args:
+        as_records: When True, return EmailRecord objects; otherwise dicts.
+
+    Returns:
+        List of email objects or dicts; empty list on error/missing file.
+    """
     if not EMAIL_JSON.exists():
         return []
     try:
@@ -48,11 +61,13 @@ def load_corpus(as_records: bool = False) -> List[Union[Dict[str, Any], EmailRec
         return []
 
 def save_corpus(items: Iterable[Union[Dict[str, Any], EmailRecord]]):
+    """Persist the corpus items to disk as JSON."""
     serialized = _serialize(items)
     with EMAIL_JSON.open("w", encoding="utf-8") as f:
         json.dump(serialized, f, ensure_ascii=False, indent=2)
 
 def add_items(new_items: Iterable[Union[Dict[str, Any], EmailRecord]]):
+    """Append new items to the stored corpus, creating the file if needed."""
     data = load_corpus()
     data.extend(new_items)
     save_corpus(data)

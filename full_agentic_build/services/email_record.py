@@ -16,10 +16,12 @@ class AttachmentRecord:
     checksum: Optional[str] = None  # e.g., sha256 for dedup/safety
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize attachment metadata to a JSON-safe dict."""
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AttachmentRecord":
+        """Create an AttachmentRecord from a serialized dict."""
         return cls(**data)
 
 
