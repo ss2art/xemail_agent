@@ -191,7 +191,7 @@ with tab2:
 with tab3:
     st.subheader("Semantic Topic Search")
     query = st.text_input("Enter a topic (e.g., Role Playing Games, Job offer, Promotion)")
-    col_limit, col_category = st.columns(2)
+    col_limit, col_category, col_filter = st.columns(3)
     with col_limit:
         limit = st.number_input(
             "Max results",
@@ -202,6 +202,8 @@ with tab3:
         )
     with col_category:
         category_label = st.text_input("Optional category label to tag matches")
+    with col_filter:
+        filter_category = st.text_input("Filter results by category (optional)")
 
     # Initialize search session storage
     if "search_results" not in st.session_state:
@@ -213,7 +215,13 @@ with tab3:
 
     if st.button("Search") and query:
         try:
-            hits = search_emails(vectorstore, query=query, limit=int(limit), category_name=category_label.strip() or None)
+            hits = search_emails(
+                vectorstore,
+                query=query,
+                limit=int(limit),
+                category_name=category_label.strip() or None,
+                filter_category=filter_category.strip() or None,
+            )
         except Exception as e:
             st.error(f"Search failed: {e}")
             hits = []
@@ -223,6 +231,7 @@ with tab3:
             "query": query,
             "limit": int(limit),
             "category_label": category_label.strip() or None,
+            "filter_category": filter_category.strip() or None,
         }
         st.session_state["search_expanded"] = None
         st.rerun()
@@ -233,11 +242,17 @@ with tab3:
     stored_query = params.get("query")
     stored_limit = params.get("limit")
     stored_category = params.get("category_label")
+    stored_filter = params.get("filter_category")
 
     if hits and stored_query:
         st.markdown(f"Showing **{len(hits)}** result(s) (limit **{stored_limit}**) for query: `{stored_query}`")
+        meta_lines = []
         if stored_category:
-            st.caption(f"Applied category label: {stored_category}")
+            meta_lines.append(f"Applied category label: {stored_category}")
+        if stored_filter:
+            meta_lines.append(f"Filter: {stored_filter}")
+        if meta_lines:
+            st.caption(" | ".join(meta_lines))
 
         corpus = {(item.get("uid") or item.get("message_id")): item for item in load_corpus()}
 

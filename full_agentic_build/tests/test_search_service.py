@@ -11,7 +11,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from services import search_service  # type: ignore
-from services.search_service import search_emails  # type: ignore
+from services.search_service import search_emails, validate_category_name  # type: ignore
 
 
 class _FakeVectorWithScores:
@@ -97,3 +97,38 @@ def test_search_emails_clamps_limit_and_falls_back_without_scores(monkeypatch):
     assert results[0]["score"] is None  # fallback path
     assert results[0]["snippet"].startswith("First doc content")
     assert results[1]["id"] == "b"
+
+
+def test_search_emails_filters_by_category(monkeypatch):
+    """
+    Ensure filter_category limits returned results to matching categories (case-insensitive).
+    """
+    monkeypatch.setenv("SEARCH_MAX_LIMIT", "5")
+    monkeypatch.setenv("SEARCH_DEFAULT_LIMIT", "5")
+    monkeypatch.setattr(search_service, "load_corpus", lambda: [])
+    monkeypatch.setattr(search_service, "apply_category_label", lambda ids, category: True)
+    docs = [
+        (Document(page_content="Doc one", metadata={"uid": "1", "categories": ["Finance"]}), 0.1),
+        (Document(page_content="Doc two", metadata={"uid": "2", "categories": ["finance", "job"]}), 0.2),
+        (Document(page_content="Doc three", metadata={"uid": "3", "categories": ["Marketing"]}), 0.3),
+    ]
+    vector = _FakeVectorWithScores(docs)
+
+    results = search_emails(vector, query="doc", filter_category="FINANCE")
+
+    assert len(results) == 2
+    assert {r["id"] for r in results} == {"1", "2"}
+
+
+def test_validate_category_name_enforces_rules():
+    """
+    Validate category name guardrails (non-empty, length, allowed chars).
+    """
+    assert validate_category_name("Finance-2025") == "Finance-2025"
+    assert validate_category_name(None) is None
+    for bad in ["", "   ", "x" * 65, "name!"]:
+        try:
+            validate_category_name(bad)
+            assert False, f"Expected validation failure for: {bad!r}"
+        except ValueError:
+            pass

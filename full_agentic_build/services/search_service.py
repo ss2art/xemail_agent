@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_core.documents import Document
@@ -54,6 +55,26 @@ def _snippet(text: str, length: int = 200) -> str:
     return clean if len(clean) <= length else f"{clean[:length].rstrip()}..."
 
 
+_CATEGORY_RE = re.compile(r"^[\w\s\-_/]{1,64}$")
+
+
+def validate_category_name(name: Optional[str]) -> Optional[str]:
+    """
+    Ensure category names are non-empty, bounded in length, and avoid odd chars.
+    Returns stripped name or raises ValueError for invalid inputs.
+    """
+    if name is None:
+        return None
+    stripped = name.strip()
+    if not stripped:
+        raise ValueError("Category name cannot be empty.")
+    if len(stripped) > 64:
+        raise ValueError("Category name too long (max 64 characters).")
+    if not _CATEGORY_RE.match(stripped):
+        raise ValueError("Category name contains invalid characters.")
+    return stripped
+
+
 def get_limit_defaults() -> Tuple[int, int]:
     """Expose (default_limit, max_limit) for UI controls and callers."""
     return _limit_bounds()
@@ -64,6 +85,7 @@ def search_emails(
     query: str,
     limit: Optional[int] = None,
     category_name: Optional[str] = None,
+    filter_category: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Unified search API for emails with limit validation and optional category tagging.
@@ -73,6 +95,9 @@ def search_emails(
     """
     if not query:
         return []
+
+    category_name = validate_category_name(category_name)
+    filter_category = validate_category_name(filter_category)
 
     k = _normalize_limit(limit)
     raw_hits = _search_with_scores(vectorstore, query, k=k)
@@ -129,6 +154,14 @@ def search_emails(
             }
         )
 
+    # Optional category filter (case-insensitive match)
+    if filter_category:
+        fc_lower = filter_category.lower()
+        results = [
+            r for r in results
+            if any((c or "").lower() == fc_lower for c in (r.get("categories") or []))
+        ]
+
     # Persist the applied category for future searches if provided.
     if category_name:
         ids = [r["id"] for r in results if r.get("id")]
@@ -137,4 +170,4 @@ def search_emails(
     return results
 
 
-__all__ = ["search_emails", "get_limit_defaults"]
+__all__ = ["search_emails", "get_limit_defaults", "validate_category_name"]
