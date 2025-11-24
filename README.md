@@ -21,6 +21,12 @@
 - Full build UI: `python -m streamlit run full_agentic_build/ui/streamlit_app.py --server.port 7860`
 - Shortcuts: `python run_barebones.py` or `python run_full.py` (respects `STREAMLIT_HEADLESS` env; defaults to headless/auto-open disabled)
 
+## Data sets (checked in)
+
+- `data/sample_emails/`: small synthetic fixtures for guardrail/flow testing (phishing, spoofed brand, hidden content, suspect attachment).
+- `data/sample_email/`: tiny curated subset for quick demos (subset of sample_emails plus guardrail variants).
+- `data/enron_small/`: 50-message slice from `data/enron_sample/eml` for local search/classification tests.
+
 ## Testing
 
 - Disable site-package plugins and run targeted tests (PowerShell): `$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'; python -m pytest full_agentic_build/tests/test_agents.py -s`
