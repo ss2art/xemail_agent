@@ -24,7 +24,6 @@
 ## Data sets (checked in)
 
 - `data/sample_emails/`: small synthetic fixtures for guardrail/flow testing (phishing, spoofed brand, hidden content, suspect attachment).
-- `data/sample_email/`: tiny curated subset for quick demos (subset of sample_emails plus guardrail variants).
 - `data/enron_small/`: 50-message slice from `data/enron_sample/eml` for local search/classification tests.
 
 ## Testing
