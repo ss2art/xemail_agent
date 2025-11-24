@@ -1,6 +1,7 @@
 """LLM-based single-label email classification."""
 
 from langchain_core.prompts import PromptTemplate
+from agents.utils import invoke_with_retry
 
 PROMPT = PromptTemplate.from_template(
     """You are an expert email triage assistant.
@@ -25,9 +26,12 @@ def classify_email(llm, email_text: str) -> str:
     Returns:
         Chosen category label string.
     """
+    def _call(prompt_text: str):
+        return invoke_with_retry(llm, PROMPT.format(email_text=prompt_text))
+
     try:
-        resp = llm.invoke(PROMPT.format(email_text=email_text))
+        resp = _call(email_text)
     except Exception:
-        resp = llm.invoke(PROMPT.format(email_text=email_text[:12000]))
+        resp = _call(email_text[:12000])
     text = getattr(resp, "content", str(resp)).strip()
     return text.splitlines()[0].strip()

@@ -3,6 +3,7 @@
 import json
 
 from langchain_core.prompts import PromptTemplate
+from agents.utils import invoke_with_retry, parse_json_response
 
 PROMPT = PromptTemplate.from_template(
     """Determine whether promotions or offers in the email are expired.
@@ -25,8 +26,8 @@ def detect_expired(llm, email_text: str) -> dict:
     Returns:
         Dict with status and evidence string.
     """
-    resp = llm.invoke(PROMPT.format(email_text=email_text[:12000]))
-    try:
-        return json.loads(getattr(resp, "content", str(resp)))
-    except Exception:
-        return {"status": "UNKNOWN", "evidence": "Parsing failed"}
+    resp = invoke_with_retry(llm, PROMPT.format(email_text=email_text[:12000]))
+    return parse_json_response(
+        resp,
+        {"status": "UNKNOWN", "evidence": "Parsing failed"},
+    )

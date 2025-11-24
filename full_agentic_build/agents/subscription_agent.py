@@ -3,6 +3,7 @@
 import json
 
 from langchain_core.prompts import PromptTemplate
+from agents.utils import invoke_with_retry, parse_json_response
 
 PROMPT = PromptTemplate.from_template(
     """Identify if this email relates to a recurring subscription or newsletter.
@@ -24,8 +25,8 @@ def detect_subscription(llm, email_text: str) -> dict:
     Returns:
         Dict containing is_subscription/vendor/has_unsubscribe flags.
     """
-    resp = llm.invoke(PROMPT.format(email_text=email_text[:12000]))
-    try:
-        return json.loads(getattr(resp, "content", str(resp)))
-    except Exception:
-        return {"is_subscription": False, "vendor": None, "has_unsubscribe": False}
+    resp = invoke_with_retry(llm, PROMPT.format(email_text=email_text[:12000]))
+    return parse_json_response(
+        resp,
+        {"is_subscription": False, "vendor": None, "has_unsubscribe": False},
+    )
