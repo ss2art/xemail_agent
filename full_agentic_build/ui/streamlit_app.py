@@ -171,13 +171,14 @@ with tab1:
     st.subheader("Load .eml samples")
     folder = st.text_input("Folder path", value=os.path.join(DATA_DIR, "sample_emails"))
     if st.button("Load Files"):
-        items = load_eml_folder(folder)
-        if items:
-            add_items(items)
-            st.success(f"Loaded {len(items)} emails into the {COLLECTION_LABEL}.")
-            st.rerun()
-        else:
-            st.warning("No .eml files found.")
+        with st.spinner("Loading emails..."):
+            items = load_eml_folder(folder)
+            if items:
+                add_items(items)
+                st.success(f"Loaded {len(items)} emails into the {COLLECTION_LABEL}.")
+                st.rerun()
+            else:
+                st.warning("No .eml files found.")
 
 with tab2:
     st.subheader("Run Classification Pipeline")
