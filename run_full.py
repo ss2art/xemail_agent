@@ -10,10 +10,20 @@ APP = ROOT / "full_agentic_build" / "ui" / "streamlit_app.py"
 
 
 def _venv_python() -> Path:
-    """Prefer the repo's root .venv Python; fall back to current interpreter."""
-    script_dir = "Scripts" if os.name == "nt" else "bin"
-    candidate = ROOT / ".venv" / script_dir / ("python.exe" if os.name == "nt" else "python")
-    return candidate if candidate.exists() else Path(sys.executable)
+    """
+    Prefer the repo's root .venv Python, handling both Windows and POSIX layouts.
+
+    Returns the first existing candidate, otherwise the current interpreter.
+    """
+    candidates = [
+        ROOT / ".venv" / "Scripts" / "python.exe",  # Windows venv
+        ROOT / ".venv" / "Scripts" / "python",      # Git-Bash/WSL edge case
+        ROOT / ".venv" / "bin" / "python",          # POSIX venv
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return cand
+    return Path(sys.executable)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -44,16 +54,16 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(argv) if argv is not None else sys.argv[1:]
     args = parse_args(argv)
 
-    # Ensure we run with the repo .venv if present to avoid missing dependencies.
-    python = _venv_python()
-    if python.resolve() != Path(sys.executable).resolve():
-        os.execv(str(python), [str(python), __file__, *argv])
+    # Prefer the repo .venv interpreter if present; otherwise use current interpreter.
+    python_path = _venv_python()
+    if not python_path.exists():
+        python_path = Path(sys.executable)
 
     port = args.port or os.getenv("FULL_PORT", "7860")
     env_headless = os.getenv("STREAMLIT_HEADLESS", "true").lower() not in {"0", "false", "no"}
     headless = env_headless if args.headless is None else args.headless
     cmd = [
-        sys.executable,
+        str(python_path),
         "-m",
         "streamlit",
         "run",

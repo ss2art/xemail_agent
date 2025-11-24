@@ -25,6 +25,7 @@ _HTML_SNIPPET_RE = re.compile(r"<[a-zA-Z][^>]*>")
 
 
 def _looks_like_html(text: str) -> bool:
+    """Heuristic to detect embedded HTML in a text/plain part."""
     return bool(text and _HTML_SNIPPET_RE.search(text))
 
 
@@ -106,6 +107,7 @@ def _collect_bodies(msg: EmailMessage) -> Tuple[Optional[str], Optional[str]]:
 
 
 def _collect_attachments(msg: EmailMessage) -> List[AttachmentRecord]:
+    """Extract attachment metadata from the message safely."""
     atts: List[AttachmentRecord] = []
     for part in msg.iter_attachments():
         try:

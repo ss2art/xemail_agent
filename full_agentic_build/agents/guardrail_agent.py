@@ -1,6 +1,17 @@
+"""Lightweight guardrail checks on raw email payloads."""
+
 from typing import Dict
 
 def validate_email(item: Dict) -> Dict:
+    """
+    Apply basic structural checks to an email dict.
+
+    Args:
+        item: Email-like dict containing subject, from, and raw body.
+
+    Returns:
+        Dict with guardrail status and notes.
+    """
     notes = []
     raw = item.get("raw", "") or ""
     if not raw.strip():

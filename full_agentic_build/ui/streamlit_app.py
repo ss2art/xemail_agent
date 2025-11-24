@@ -18,18 +18,23 @@ import pandas as pd
 from utils.llm_utils import create_llm
 from agents.ingestion_agent import load_eml_folder
 from agents.controller_agent import process_batch
-from agents.semantic_agent import search
 from agents.discovery_agent import remember_topic
 from services.embeddings_service import get_vectorstore, clear_vectorstore
 from services.storage_service import load_corpus, save_corpus, add_items, clear_corpus
 from services.email_markdown import to_markdown
+from services.search_service import search_emails, get_limit_defaults
 
 # UI descriptor for the entire set of read emails (do not change function names)
 COLLECTION_LABEL = os.getenv("MAIL_COLLECTION_LABEL", "Mailbox")
 DATA_DIR = os.getenv("DATA_DIR", str(REPO_ROOT / "data"))
 VECTOR_DIR = os.getenv("VECTOR_DIR", str(Path(DATA_DIR) / "vectorstore"))
 
-def _version_label(default: str = "v6") -> str:
+@st.cache_resource(show_spinner=False)
+def _get_llm():
+    # Cache the LLM so Streamlit reruns on UI events don't re-instantiate it.
+    return create_llm()
+
+def _version_label(default: str = "v7") -> str:
     """Resolve app version from env or latest git tag; fall back to default."""
     env_ver = os.getenv("APP_VERSION") or os.getenv("BUILD_TAG")
     if env_ver:
@@ -56,13 +61,14 @@ st.title(TITLE)
 DEBUG_MODE = "--debug" in sys.argv
 # Initialize LLM & Vectorstore
 try:
-    llm = create_llm()
+    llm = _get_llm()
     st.success("LLM initialized")
 except Exception as e:
     st.error(f"LLM initialization failed: {e}")
     st.stop()
 
 vectorstore = get_vectorstore(VECTOR_DIR)
+DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT = get_limit_defaults()
 
 
 def _human_bytes(n: int) -> str:
@@ -180,24 +186,131 @@ with tab2:
         if not data:
             st.warning(f"{COLLECTION_LABEL} is empty. Load emails first.")
         else:
-            results = process_batch(llm, vectorstore, data)
-            save_corpus(results)
-            st.session_state["last_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with st.spinner("Processing emails..."):
+                results = process_batch(llm, vectorstore, data)
+                save_corpus(results)
+                st.session_state["last_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             st.success(f"Processed {len(results)} emails.")
             st.rerun()
 
 with tab3:
     st.subheader("Semantic Topic Search")
     query = st.text_input("Enter a topic (e.g., Role Playing Games, Job offer, Promotion)")
+    col_limit, col_category, col_filter = st.columns(3)
+    with col_limit:
+        limit = st.number_input(
+            "Max results",
+            min_value=1,
+            max_value=MAX_SEARCH_LIMIT,
+            value=DEFAULT_SEARCH_LIMIT,
+            step=1,
+        )
+    with col_category:
+        category_label = st.text_input("Optional category label to tag matches")
+    with col_filter:
+        all_categories = sorted({
+            c
+            for item in load_corpus()
+            for c in (item.get("categories") or [])
+            if c
+        })
+        filter_options = ["(All)"] + all_categories
+        filter_selection = st.selectbox("Filter results by category", options=filter_options, index=0)
+        filter_category = None if filter_selection == "(All)" else filter_selection
+
+    # Initialize search session storage
+    if "search_results" not in st.session_state:
+        st.session_state["search_results"] = []
+    if "search_params" not in st.session_state:
+        st.session_state["search_params"] = {}
+    if "search_expanded" not in st.session_state:
+        st.session_state["search_expanded"] = None
+
     if st.button("Search") and query:
-        hits = search(vectorstore, query, k=8)
-        if hits:
-            st.write([{"meta": h.metadata, "preview": h.page_content[:200]} for h in hits])
-            if st.checkbox("Remember this topic for future classifications?"):
-                remember_topic(vectorstore, query)
-                st.info("Topic remembered.")
-        else:
-            st.info("No hits yet. Try classifying first.")
+        try:
+            hits = search_emails(
+                vectorstore,
+                query=query,
+                limit=int(limit),
+                category_name=category_label.strip() or None,
+                filter_category=filter_category,
+            )
+        except Exception as e:
+            st.error(f"Search failed: {e}")
+            hits = []
+
+        st.session_state["search_results"] = hits
+        st.session_state["search_params"] = {
+            "query": query,
+            "limit": int(limit),
+            "category_label": category_label.strip() or None,
+            "filter_category": filter_category,
+        }
+        st.session_state["search_expanded"] = None
+        st.rerun()
+
+    # Render stored search results (supports toggling without losing data)
+    hits = st.session_state.get("search_results") or []
+    params = st.session_state.get("search_params") or {}
+    stored_query = params.get("query")
+    stored_limit = params.get("limit")
+    stored_category = params.get("category_label")
+    stored_filter = params.get("filter_category")
+
+    if hits and stored_query:
+        st.markdown(f"Showing **{len(hits)}** result(s) (limit **{stored_limit}**) for query: `{stored_query}`")
+        meta_lines = []
+        if stored_category:
+            meta_lines.append(f"Applied category label: {stored_category}")
+        if stored_filter:
+            meta_lines.append(f"Filter: {stored_filter}")
+        if meta_lines:
+            st.caption(" | ".join(meta_lines))
+
+        corpus = {(item.get("uid") or item.get("message_id")): item for item in load_corpus()}
+
+        # Header row
+        hcols = st.columns([3, 2, 2, 2, 1])
+        hcols[0].markdown("**Subject**")
+        hcols[1].markdown("**Sender**")
+        hcols[2].markdown("**Date**")
+        hcols[3].markdown("**Categories**")
+        hcols[4].markdown("**Score**")
+
+        for idx, h in enumerate(hits):
+            subject = h.get("subject") or "(no subject)"
+            sender = h.get("sender") or "(unknown sender)"
+            date = h.get("date") or ""
+            categories = ", ".join(h.get("categories") or [])
+            score = h.get("score")
+            is_expanded = st.session_state.get("search_expanded") == h.get("id")
+
+            cols = st.columns([3, 2, 2, 2, 1])
+            btn_label = "▼ " if is_expanded else "▶ "
+            if cols[0].button(f"{btn_label}{subject}", key=f"expand_{idx}"):
+                st.session_state["search_expanded"] = None if is_expanded else h.get("id")
+                st.rerun()
+            cols[1].write(sender)
+            cols[2].write(date)
+            cols[3].write(categories or "n/a")
+            cols[4].write(f"{score:.3f}" if isinstance(score, (int, float)) else "n/a")
+
+            if is_expanded:
+                rec = corpus.get(h.get("id"))
+                with st.container():
+                    st.caption(f"Categories: {categories or 'n/a'}  |  Score: {score if score is not None else 'n/a'}")
+                    if rec:
+                        st.markdown("**Full content:**")
+                        st.code(_markdown_from_record(rec) or "", language="markdown")
+                    else:
+                        st.info("Full content not found in corpus.")
+                st.markdown("---")
+
+        if st.checkbox("Remember this topic for future classifications?"):
+            remember_topic(vectorstore, stored_query)
+            st.info("Topic remembered.")
+    else:
+        st.info("No hits yet. Try classifying first.")
 
 with tab4:
     st.subheader(f"{COLLECTION_LABEL} Overview")

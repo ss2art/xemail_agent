@@ -1,3 +1,5 @@
+"""Embedding and vector store helpers with cleanup utilities."""
+
 import gc
 import os
 from pathlib import Path
@@ -28,11 +30,21 @@ DEFAULT_VECTOR_DIR = Path(os.getenv("VECTOR_DIR") or (REPO_ROOT / "data" / "vect
 
 
 def get_embeddings():
+    """Instantiate the configured embedding model (OpenAI)."""
     model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     return OpenAIEmbeddings(model=model)
 
 
 def get_vectorstore(persist_directory: str = None):
+    """
+    Create or load a Chroma vector store at the provided path.
+
+    Args:
+        persist_directory: Optional path; defaults to repo data/vectorstore.
+
+    Returns:
+        Initialized Chroma vector store instance.
+    """
     persist_directory = Path(persist_directory or DEFAULT_VECTOR_DIR)
     persist_directory.mkdir(parents=True, exist_ok=True)
     embeddings = get_embeddings()
