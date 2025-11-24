@@ -34,7 +34,7 @@ def _get_llm():
     # Cache the LLM so Streamlit reruns on UI events don't re-instantiate it.
     return create_llm()
 
-def _version_label(default: str = "v6") -> str:
+def _version_label(default: str = "v7") -> str:
     """Resolve app version from env or latest git tag; fall back to default."""
     env_ver = os.getenv("APP_VERSION") or os.getenv("BUILD_TAG")
     if env_ver:
