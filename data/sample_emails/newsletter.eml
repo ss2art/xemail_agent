@@ -1,11 +1,20 @@
+Message-ID: <xm6365271.1075861108801.JavaMail.evans@thyme>
 From: news@updates.example.com
 To: you@example.com
 Subject: Weekly Tech Newsletter - AI Trends
 Date: Fri, 17 Oct 2025 08:00:00 -0700
 Content-Type: text/html; charset="UTF-8"
 
-<html><body>
-<h1>AI Trends</h1>
-<p>Welcome to the weekly newsletter with the latest articles and links.</p>
-<p><a href="https://example.com/unsubscribe">Unsubscribe</a></p>
-</body></html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #222;">
+    <h1>AI Trends</h1>
+    <p>Welcome to this week's roundup. Highlights:</p>
+    <ul>
+      <li>LLM inference cost benchmarks across vendors</li>
+      <li>Vector database latency shootout (Chroma vs. FAISS vs. pgvector)</li>
+      <li>Guardrails for hallucination reduction in production chatbots</li>
+    </ul>
+    <p>Read more: <a href="https://example.com/ai-trends">https://example.com/ai-trends</a></p>
+    <p style="font-size: 12px; color: #666;">You are receiving this because you subscribed at example.com. To update preferences or unsubscribe, click <a href="https://example.com/unsubscribe">here</a>.</p>
+  </body>
+</html>
