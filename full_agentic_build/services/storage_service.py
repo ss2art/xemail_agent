@@ -67,10 +67,34 @@ def save_corpus(items: Iterable[Union[Dict[str, Any], EmailRecord]]):
         json.dump(serialized, f, ensure_ascii=False, indent=2)
 
 def add_items(new_items: Iterable[Union[Dict[str, Any], EmailRecord]]):
-    """Append new items to the stored corpus, creating the file if needed."""
+    """
+    Append new items to the stored corpus, skipping duplicates by uid/message_id.
+    Returns a dict with counts: inserted, duplicates, missing_id.
+    """
     data = load_corpus()
-    data.extend(new_items)
-    save_corpus(data)
+    existing_ids = {it.get("uid") or it.get("message_id") for it in data if it.get("uid") or it.get("message_id")}
+    counts = {"inserted": 0, "duplicates": 0, "missing_id": 0}
+    for it in new_items:
+        payload: Dict[str, Any]
+        if isinstance(it, EmailRecord):
+            payload = it.to_dict()
+        else:
+            payload = dict(it)
+        uid = payload.get("uid") or payload.get("message_id")
+        if not uid:
+            counts["missing_id"] += 1
+            continue
+        if uid in existing_ids:
+            counts["duplicates"] += 1
+            continue
+        # Preserve provided UID/message_id only; do not auto-generate.
+        payload["uid"] = uid
+        data.append(payload)
+        existing_ids.add(uid)
+        counts["inserted"] += 1
+    if counts["inserted"]:
+        save_corpus(data)
+    return counts
 
 
 def clear_corpus():

@@ -105,6 +105,32 @@ def _index_size(vs) -> int:
         except Exception:
             return 0
 
+def _category_counts(corpus):
+    counts = {}
+    for item in corpus:
+        cats = item.get("categories") or []
+        if not cats and item.get("category"):
+            cats = [item.get("category")]
+        for c in cats:
+            if not c:
+                continue
+            counts[c] = counts.get(c, 0) + 1
+    return counts
+
+def _provisional_category_counts(items):
+    counts = {}
+    for item in items:
+        cats = item.get("categories") or []
+        if not cats and item.get("category"):
+            cats = [item.get("category")]
+        if not cats:
+            cats = ["Uncategorized (not processed)"]
+        for c in cats:
+            if not c:
+                continue
+            counts[c] = counts.get(c, 0) + 1
+    return counts
+
 
 def _markdown_from_record(rec: dict) -> str:
     """Reconstruct markdown if not already present."""
@@ -171,13 +197,48 @@ with tab1:
     st.subheader("Load .eml samples")
     folder = st.text_input("Folder path", value=os.path.join(DATA_DIR, "sample_emails"))
     if st.button("Load Files"):
-        items = load_eml_folder(folder)
-        if items:
-            add_items(items)
-            st.success(f"Loaded {len(items)} emails into the {COLLECTION_LABEL}.")
-            st.rerun()
-        else:
-            st.warning("No .eml files found.")
+        with st.spinner("Loading emails..."):
+            items = load_eml_folder(folder)
+            if items:
+                total = len(items)
+                errors = sum(1 for it in items if isinstance(it, dict) and it.get("error"))
+                counts = add_items(items)
+                inserted = counts.get("inserted", 0)
+                rejected = total - inserted
+                corpus = load_corpus()
+                cat_counts = _category_counts(corpus)
+                # If corpus categories are empty (not yet processed), show provisional counts from loaded items.
+                if not cat_counts and inserted:
+                    cat_counts = _provisional_category_counts([it for it in items if isinstance(it, dict)])
+                st.session_state["ingest_summary"] = {
+                    "total": total,
+                    "inserted": inserted,
+                    "rejected": rejected,
+                    "errors": errors + counts.get("missing_id", 0),
+                    "duplicates": counts.get("duplicates", 0),
+                    "missing_id": counts.get("missing_id", 0),
+                    "categories": cat_counts,
+                }
+                st.success(f"Loaded {inserted} new emails into the {COLLECTION_LABEL}.")
+            else:
+                st.warning("No .eml files found.")
+
+    summary = st.session_state.get("ingest_summary")
+    if summary:
+        st.markdown("**Ingestion Summary**")
+        st.write(
+            f"Total read: {summary['total']} | Inserted: {summary['inserted']} | "
+            f"Rejected/duplicates: {summary['rejected']} | Errors: {summary['errors']}"
+        )
+        if summary.get("duplicates") or summary.get("missing_id"):
+            st.caption(
+                f"Duplicates: {summary.get('duplicates',0)} | Missing uid/message_id: {summary.get('missing_id',0)}"
+            )
+        if summary["categories"]:
+            st.markdown("**Category counts:**")
+            st.table({"category": list(summary["categories"].keys()), "count": list(summary["categories"].values())})
+        if st.button("OK", key="ingest_ok"):
+            st.session_state.pop("ingest_summary", None)
 
 with tab2:
     st.subheader("Run Classification Pipeline")
