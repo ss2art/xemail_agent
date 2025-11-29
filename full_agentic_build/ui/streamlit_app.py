@@ -190,7 +190,7 @@ with st.sidebar:
 
 # Tabs include a maintenance section for clearing data and vector store
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Load Emails", "Classify & Index", "Topic Search", "Results", "Maintenance"]
+    ["Load Emails", "Classify & Index", "Topic Search", "Results", "Metrics"]
 )
 
 with tab1:
@@ -234,9 +234,6 @@ with tab1:
             st.caption(
                 f"Duplicates: {summary.get('duplicates',0)} | Missing uid/message_id: {summary.get('missing_id',0)}"
             )
-        if summary["categories"]:
-            st.markdown("**Category counts:**")
-            st.table({"category": list(summary["categories"].keys()), "count": list(summary["categories"].values())})
         if st.button("OK", key="ingest_ok"):
             st.session_state.pop("ingest_summary", None)
 
@@ -420,10 +417,11 @@ with tab4:
         st.info("No data yet.")
 
 with tab5:
-    st.subheader("Maintenance")
+    st.subheader("Metrics & Maintenance")
     st.caption("Clear stored emails and vector index. This cannot be undone.")
 
-    email_count2 = len(load_corpus())
+    corpus2 = load_corpus()
+    email_count2 = len(corpus2)
     storage_size2 = _dir_size(VECTOR_DIR)
     try:
         index_size2 = _index_size(globals().get("vectorstore"))
@@ -431,64 +429,47 @@ with tab5:
         index_size2 = 0
     last_proc2 = st.session_state.get("last_processed_at") or "n/a"
 
-    st.markdown("#### Stats")
+    st.markdown("#### Category Summary")
     st.caption(f"Emails: {email_count2}")
     st.caption(f"Storage Size: {_human_bytes(storage_size2)}")
     st.caption(f"Index Size: {index_size2}")
     st.caption(f"Last Processed: {last_proc2}")
+    cat_counts2 = _category_counts(corpus2)
+    if cat_counts2:
+        st.markdown("**Category Summary**")
+        st.table({"category": list(cat_counts2.keys()), "count": list(cat_counts2.values())})
     if st.button("Refresh Stats"):
         st.rerun()
     st.markdown("---")
 
-    if "confirm_clear_emails" not in st.session_state:
-        st.session_state["confirm_clear_emails"] = False
-    if "confirm_clear_vector" not in st.session_state:
-        st.session_state["confirm_clear_vector"] = False
+    if "confirm_clear_all" not in st.session_state:
+        st.session_state["confirm_clear_all"] = False
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if not st.session_state["confirm_clear_emails"]:
-            if st.button("Clear Emails"):
-                st.session_state["confirm_clear_emails"] = True
+    st.markdown("---")
+    if not st.session_state["confirm_clear_all"]:
+        if st.button("Clear Emails and Vector Store"):
+            st.session_state["confirm_clear_all"] = True
+            st.rerun()
+    else:
+        st.error("Confirm clearing ALL data (emails and vector store). This cannot be undone.")
+        ac1, ac2 = st.columns(2)
+        with ac1:
+            if st.button("Confirm Clear All"):
+                clear_corpus()
+                st.session_state["last_processed_at"] = None
+                current_vs = globals().get("vectorstore")
+                globals()["vectorstore"] = None
+                try:
+                    clear_vectorstore(VECTOR_DIR, current_vs)
+                    globals()["vectorstore"] = get_vectorstore(VECTOR_DIR)
+                    st.success("Cleared emails and vector store.")
+                except Exception as e:
+                    st.error(f"Full cleanup failed: {e}")
+                finally:
+                    st.session_state["confirm_clear_all"] = False
+                    st.rerun()
+        with ac2:
+            if st.button("Cancel Clear All"):
+                st.session_state["confirm_clear_all"] = False
+                st.info("Cancelled.")
                 st.rerun()
-        else:
-            st.error("Confirm clearing emails. This cannot be undone.")
-            cc1, cc2 = st.columns(2)
-            with cc1:
-                if st.button("Confirm Clear Emails"):
-                    clear_corpus()
-                    st.session_state["last_processed_at"] = None
-                    st.session_state["confirm_clear_emails"] = False
-                    st.success(f"Cleared {COLLECTION_LABEL} data file.")
-                    st.rerun()
-            with cc2:
-                if st.button("Cancel"):
-                    st.session_state["confirm_clear_emails"] = False
-                    st.info("Cancelled.")
-                    st.rerun()
-    with c2:
-        if not st.session_state["confirm_clear_vector"]:
-            if st.button("Clear Vector Store"):
-                st.session_state["confirm_clear_vector"] = True
-                st.rerun()
-        else:
-            st.error("Confirm clearing vector store. This cannot be undone.")
-            vc1, vc2 = st.columns(2)
-            with vc1:
-                if st.button("Confirm Clear Vector Store"):
-                    current_vs = globals().get("vectorstore")
-                    globals()["vectorstore"] = None
-                    try:
-                        clear_vectorstore(VECTOR_DIR, current_vs)
-                        globals()["vectorstore"] = get_vectorstore(VECTOR_DIR)
-                        st.success("Vector store cleared and reinitialized.")
-                    except Exception as e:
-                        st.error(f"Vector store cleanup failed: {e}")
-                    finally:
-                        st.session_state["confirm_clear_vector"] = False
-                        st.rerun()
-            with vc2:
-                if st.button("Cancel"):
-                    st.session_state["confirm_clear_vector"] = False
-                    st.info("Cancelled.")
-                    st.rerun()
