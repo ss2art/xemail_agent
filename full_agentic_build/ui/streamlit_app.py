@@ -105,32 +105,6 @@ def _index_size(vs) -> int:
         except Exception:
             return 0
 
-def _category_counts(corpus):
-    counts = {}
-    for item in corpus:
-        cats = item.get("categories") or []
-        if not cats and item.get("category"):
-            cats = [item.get("category")]
-        for c in cats:
-            if not c:
-                continue
-            counts[c] = counts.get(c, 0) + 1
-    return counts
-
-def _provisional_category_counts(items):
-    counts = {}
-    for item in items:
-        cats = item.get("categories") or []
-        if not cats and item.get("category"):
-            cats = [item.get("category")]
-        if not cats:
-            cats = ["Uncategorized (not processed)"]
-        for c in cats:
-            if not c:
-                continue
-            counts[c] = counts.get(c, 0) + 1
-    return counts
-
 
 def _markdown_from_record(rec: dict) -> str:
     """Reconstruct markdown if not already present."""
@@ -190,52 +164,20 @@ with st.sidebar:
 
 # Tabs include a maintenance section for clearing data and vector store
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Load Emails", "Classify & Index", "Topic Search", "Results", "Metrics"]
+    ["Load Emails", "Classify & Index", "Topic Search", "Results", "Maintenance"]
 )
 
 with tab1:
     st.subheader("Load .eml samples")
     folder = st.text_input("Folder path", value=os.path.join(DATA_DIR, "sample_emails"))
     if st.button("Load Files"):
-        with st.spinner("Loading emails..."):
-            items = load_eml_folder(folder)
-            if items:
-                total = len(items)
-                errors = sum(1 for it in items if isinstance(it, dict) and it.get("error"))
-                counts = add_items(items)
-                inserted = counts.get("inserted", 0)
-                rejected = total - inserted
-                corpus = load_corpus()
-                cat_counts = _category_counts(corpus)
-                # If corpus categories are empty (not yet processed), show provisional counts from loaded items.
-                if not cat_counts and inserted:
-                    cat_counts = _provisional_category_counts([it for it in items if isinstance(it, dict)])
-                st.session_state["ingest_summary"] = {
-                    "total": total,
-                    "inserted": inserted,
-                    "rejected": rejected,
-                    "errors": errors + counts.get("missing_id", 0),
-                    "duplicates": counts.get("duplicates", 0),
-                    "missing_id": counts.get("missing_id", 0),
-                    "categories": cat_counts,
-                }
-                st.success(f"Loaded {inserted} new emails into the {COLLECTION_LABEL}.")
-            else:
-                st.warning("No .eml files found.")
-
-    summary = st.session_state.get("ingest_summary")
-    if summary:
-        st.markdown("**Ingestion Summary**")
-        st.write(
-            f"Total read: {summary['total']} | Inserted: {summary['inserted']} | "
-            f"Rejected/duplicates: {summary['rejected']} | Errors: {summary['errors']}"
-        )
-        if summary.get("duplicates") or summary.get("missing_id"):
-            st.caption(
-                f"Duplicates: {summary.get('duplicates',0)} | Missing uid/message_id: {summary.get('missing_id',0)}"
-            )
-        if st.button("OK", key="ingest_ok"):
-            st.session_state.pop("ingest_summary", None)
+        items = load_eml_folder(folder)
+        if items:
+            add_items(items)
+            st.success(f"Loaded {len(items)} emails into the {COLLECTION_LABEL}.")
+            st.rerun()
+        else:
+            st.warning("No .eml files found.")
 
 with tab2:
     st.subheader("Run Classification Pipeline")
@@ -417,11 +359,10 @@ with tab4:
         st.info("No data yet.")
 
 with tab5:
-    st.subheader("Metrics & Maintenance")
+    st.subheader("Maintenance")
     st.caption("Clear stored emails and vector index. This cannot be undone.")
 
-    corpus2 = load_corpus()
-    email_count2 = len(corpus2)
+    email_count2 = len(load_corpus())
     storage_size2 = _dir_size(VECTOR_DIR)
     try:
         index_size2 = _index_size(globals().get("vectorstore"))
@@ -429,47 +370,64 @@ with tab5:
         index_size2 = 0
     last_proc2 = st.session_state.get("last_processed_at") or "n/a"
 
-    st.markdown("#### Category Summary")
+    st.markdown("#### Stats")
     st.caption(f"Emails: {email_count2}")
     st.caption(f"Storage Size: {_human_bytes(storage_size2)}")
     st.caption(f"Index Size: {index_size2}")
     st.caption(f"Last Processed: {last_proc2}")
-    cat_counts2 = _category_counts(corpus2)
-    if cat_counts2:
-        st.markdown("**Category Summary**")
-        st.table({"category": list(cat_counts2.keys()), "count": list(cat_counts2.values())})
     if st.button("Refresh Stats"):
         st.rerun()
     st.markdown("---")
 
-    if "confirm_clear_all" not in st.session_state:
-        st.session_state["confirm_clear_all"] = False
+    if "confirm_clear_emails" not in st.session_state:
+        st.session_state["confirm_clear_emails"] = False
+    if "confirm_clear_vector" not in st.session_state:
+        st.session_state["confirm_clear_vector"] = False
 
-    st.markdown("---")
-    if not st.session_state["confirm_clear_all"]:
-        if st.button("Clear Emails and Vector Store"):
-            st.session_state["confirm_clear_all"] = True
-            st.rerun()
-    else:
-        st.error("Confirm clearing ALL data (emails and vector store). This cannot be undone.")
-        ac1, ac2 = st.columns(2)
-        with ac1:
-            if st.button("Confirm Clear All"):
-                clear_corpus()
-                st.session_state["last_processed_at"] = None
-                current_vs = globals().get("vectorstore")
-                globals()["vectorstore"] = None
-                try:
-                    clear_vectorstore(VECTOR_DIR, current_vs)
-                    globals()["vectorstore"] = get_vectorstore(VECTOR_DIR)
-                    st.success("Cleared emails and vector store.")
-                except Exception as e:
-                    st.error(f"Full cleanup failed: {e}")
-                finally:
-                    st.session_state["confirm_clear_all"] = False
-                    st.rerun()
-        with ac2:
-            if st.button("Cancel Clear All"):
-                st.session_state["confirm_clear_all"] = False
-                st.info("Cancelled.")
+    c1, c2 = st.columns(2)
+    with c1:
+        if not st.session_state["confirm_clear_emails"]:
+            if st.button("Clear Emails"):
+                st.session_state["confirm_clear_emails"] = True
                 st.rerun()
+        else:
+            st.error("Confirm clearing emails. This cannot be undone.")
+            cc1, cc2 = st.columns(2)
+            with cc1:
+                if st.button("Confirm Clear Emails"):
+                    clear_corpus()
+                    st.session_state["last_processed_at"] = None
+                    st.session_state["confirm_clear_emails"] = False
+                    st.success(f"Cleared {COLLECTION_LABEL} data file.")
+                    st.rerun()
+            with cc2:
+                if st.button("Cancel"):
+                    st.session_state["confirm_clear_emails"] = False
+                    st.info("Cancelled.")
+                    st.rerun()
+    with c2:
+        if not st.session_state["confirm_clear_vector"]:
+            if st.button("Clear Vector Store"):
+                st.session_state["confirm_clear_vector"] = True
+                st.rerun()
+        else:
+            st.error("Confirm clearing vector store. This cannot be undone.")
+            vc1, vc2 = st.columns(2)
+            with vc1:
+                if st.button("Confirm Clear Vector Store"):
+                    current_vs = globals().get("vectorstore")
+                    globals()["vectorstore"] = None
+                    try:
+                        clear_vectorstore(VECTOR_DIR, current_vs)
+                        globals()["vectorstore"] = get_vectorstore(VECTOR_DIR)
+                        st.success("Vector store cleared and reinitialized.")
+                    except Exception as e:
+                        st.error(f"Vector store cleanup failed: {e}")
+                    finally:
+                        st.session_state["confirm_clear_vector"] = False
+                        st.rerun()
+            with vc2:
+                if st.button("Cancel"):
+                    st.session_state["confirm_clear_vector"] = False
+                    st.info("Cancelled.")
+                    st.rerun()
