@@ -42,8 +42,8 @@
 ## Versioning (semver)
 
 - Version is stored in the root `VERSION` file and displayed in the full UI header.
-- Use `tools/set_version.py` to set the version and optionally commit/tag:
-  - Release on main: `python tools/set_version.py 0.1.0 --commit --tag`
+- Use `tools/set_version.py` to set the version and optionally commit/tag. On non-`main` branches, the branch name is appended (e.g., `0.1.1-Dev`). On `main`, it tags by default (use `--no-tag` to skip).
+  - Release on main: `python tools/set_version.py 0.1.0 --commit`
   - Bump Dev after release: `python tools/set_version.py 0.1.1 --commit`
 
 ## Docker (single image for both)

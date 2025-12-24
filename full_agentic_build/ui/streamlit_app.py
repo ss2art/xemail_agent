@@ -39,7 +39,7 @@ def _version_label(default: str = "0.0.0") -> str:
     version_path = REPO_ROOT / "VERSION"
     if version_path.exists():
         raw = version_path.read_text(encoding="utf-8", errors="ignore").strip()
-        if re.match(r"^\d+\.\d+\.\d+$", raw):
+        if re.match(r"^\d+\.\d+\.\d+(-[A-Za-z0-9_.-]+)?$", raw):
             return raw
     return default
 
