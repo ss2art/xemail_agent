@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -50,3 +52,33 @@ jobs:
               echo "No requirements.txt for $sp; skipping venv setup"
             fi
           done
+
+  version-guard:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify VERSION matches tag on HEAD (warning only)
+        run: |
+          set -u
+          if [ ! -f VERSION ]; then
+            echo "WARNING: VERSION file is missing."
+            exit 0
+          fi
+          version=$(cat VERSION | tr -d '[:space:]')
+          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "WARNING: VERSION must be semver (e.g., 0.1.0). Got: $version"
+            exit 0
+          fi
+          expected_tag="v${version}"
+          head_tags=$(git tag --points-at HEAD)
+          if echo "$head_tags" | grep -qx "$expected_tag"; then
+            echo "VERSION matches HEAD tag $expected_tag."
+            exit 0
+          fi
+          echo "WARNING: Expected tag $expected_tag on HEAD, but found: ${head_tags:-<none>}"
+          exit 0
