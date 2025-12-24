@@ -6,6 +6,7 @@ Operational helpers run from the repo root (use the root `.venv` Python when app
 - `download_and_extract_enron.py` — Download the Enron archive, extract a subset of mailboxes, and sample messages into `.eml` files. Flags: `--mailboxes`, `--offset`, `--emails`, `--help`.
 - `import_test_embeddings.py` — Smoke-test importing `OpenAIEmbeddings` from `langchain` or `langchain_openai`. Flags: `--quiet`, `--help`.
 - `llm_smoke.py` — Lightweight LLM invocation check for `barebones_starter` or `full_agentic_build`. Flags: `--subproject`, `--help`.
+- `set_version.py` — Update the repo `VERSION` file and optionally commit/tag. Flags: `--commit`, `--tag`, `--message`.
 - `verify_llm.py` — Validates `create_llm()` wiring and runs a short prompt. Flags: `--prompt`, `--model`, `--help`.
 - `download_my_email_to_eml.py` — Download your own email via IMAP into `.eml` files. Flags: `--server`, `--email`, `--password`, `--folder`, `--limit`, `--out`. _Note: not yet tested; use with caution and only against accounts you control._
 

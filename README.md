@@ -39,6 +39,13 @@
 
 - Run `python -m ruff check .` from the repo root to catch undefined names and other runtime-prone issues (config in `ruff.toml`).
 
+## Versioning (semver)
+
+- Version is stored in the root `VERSION` file and displayed in the full UI header.
+- Use `tools/set_version.py` to set the version and optionally commit/tag:
+  - Release on main: `python tools/set_version.py 0.1.0 --commit --tag`
+  - Bump Dev after release: `python tools/set_version.py 0.1.1 --commit`
+
 ## Docker (single image for both)
 
 Build once from the repo root:
