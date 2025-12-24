@@ -9,7 +9,7 @@ Uses the shared root environment, requirements, and data directory.
 3. Start Streamlit:
 
    ```powershell
-   python -m streamlit run full_agentic_build/ui/streamlit_app.py --server.address=0.0.0.0 --server.port=7860
+   python -m streamlit run full_agentic_build/ui/streamlit_app.py --server.port=7860
    ```
 
 4. (Optional) Quick smoke of key deps:
@@ -34,6 +34,7 @@ docker compose up email-agent-full
 
 - Place `.eml` files in a folder and point the UI to that folder under **Load Emails**.
 - Vector index persists under `data/vectorstore`.
+- For containers or remote access, set `STREAMLIT_BIND_ADDRESS=0.0.0.0` (or pass `--server.address=0.0.0.0`).
 - Run the Streamlit UI directly:
   - Default: `streamlit run full_agentic_build/ui/streamlit_app.py`
   - Debug (shows full EmailRecord JSON under previews): `streamlit run full_agentic_build/ui/streamlit_app.py -- --debug`

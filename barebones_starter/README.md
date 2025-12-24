@@ -14,9 +14,10 @@ Minimal Streamlit UI plus guardrail/classification agents, reusing the shared ro
 2. Populate the root `.env` (copy `.env.example` if needed) with `OPENAI_API_KEY` and `LLM_MODEL`.
 3. Launch the UI:
    ```powershell
-   python -m streamlit run barebones_starter/ui/streamlit_app.py --server.address=0.0.0.0 --server.port=8501
+   python -m streamlit run barebones_starter/ui/streamlit_app.py --server.port=8501
    ```
 
 ## Data
 
 - Sample `.eml` files live under the shared `data/sample_emails` directory at repo root. Set `DATA_DIR` to override.
+- For containers or remote access, set `STREAMLIT_BIND_ADDRESS=0.0.0.0` (or pass `--server.address=0.0.0.0`).

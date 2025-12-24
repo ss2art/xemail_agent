@@ -9,6 +9,28 @@ ROOT = Path(__file__).resolve().parent
 APP = ROOT / "full_agentic_build" / "ui" / "streamlit_app.py"
 
 
+def _looks_like_container() -> bool:
+    if os.getenv("STREAMLIT_BIND_ADDRESS"):
+        return False
+    if Path("/.dockerenv").exists():
+        return True
+    cgroup = Path("/proc/1/cgroup")
+    if not cgroup.exists():
+        return False
+    try:
+        content = cgroup.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+    return any(token in content for token in ("docker", "kubepods", "containerd"))
+
+
+def _default_bind_address() -> str:
+    override = os.getenv("STREAMLIT_BIND_ADDRESS")
+    if override:
+        return override
+    return "0.0.0.0" if _looks_like_container() else "127.0.0.1"
+
+
 def _venv_python() -> Path:
     """
     Prefer the repo's root .venv Python, handling both Windows and POSIX layouts.
@@ -62,13 +84,14 @@ def main(argv: list[str] | None = None) -> int:
     port = args.port or os.getenv("FULL_PORT", "7860")
     env_headless = os.getenv("STREAMLIT_HEADLESS", "true").lower() not in {"0", "false", "no"}
     headless = env_headless if args.headless is None else args.headless
+    bind_address = _default_bind_address()
     cmd = [
         str(python_path),
         "-m",
         "streamlit",
         "run",
         str(APP),
-        "--server.address=0.0.0.0",
+        f"--server.address={bind_address}",
         f"--server.port={port}",
     ]
     if headless:
