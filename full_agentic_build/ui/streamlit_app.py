@@ -1,5 +1,5 @@
 # --- Cross-platform imports & dotenv ---
-import sys, os, json, threading, subprocess
+import sys, os, json, threading, re
 from pathlib import Path
 from datetime import datetime
 
@@ -34,22 +34,13 @@ def _get_llm():
     # Cache the LLM so Streamlit reruns on UI events don't re-instantiate it.
     return create_llm()
 
-def _version_label(default: str = "v7") -> str:
-    """Resolve app version from env or latest git tag; fall back to default."""
-    env_ver = os.getenv("APP_VERSION") or os.getenv("BUILD_TAG")
-    if env_ver:
-        return env_ver
-    try:
-        out = subprocess.check_output(
-            ["git", "describe", "--tags", "--abbrev=0"],
-            cwd=REPO_ROOT,
-            stderr=subprocess.DEVNULL,
-        )
-        tag = out.decode().strip()
-        if tag:
-            return tag
-    except Exception:
-        pass
+def _version_label(default: str = "0.0.0") -> str:
+    """Read the repo VERSION file; fall back to a default."""
+    version_path = REPO_ROOT / "VERSION"
+    if version_path.exists():
+        raw = version_path.read_text(encoding="utf-8", errors="ignore").strip()
+        if re.match(r"^\d+\.\d+\.\d+(-[A-Za-z0-9_.-]+)?$", raw):
+            return raw
     return default
 
 
@@ -163,11 +154,57 @@ with st.sidebar:
             threading.Thread(target=_delayed_exit, args=(1.0,), daemon=True).start()
 
 # Tabs include a maintenance section for clearing data and vector store
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Load Emails", "Classify & Index", "Topic Search", "Results", "Maintenance"]
+tab_mail, tab_load, tab_classify, tab_search, tab_maint = st.tabs(
+    ["Mail", "Load Emails", "Classify & Index", "Topic Search", "Maintenance"]
 )
 
-with tab1:
+with tab_mail:
+    st.subheader(f"{COLLECTION_LABEL} Overview")
+    data = load_corpus()
+    if data:
+        df = pd.DataFrame([{
+            "subject": d.get("subject",""),
+            "sender": d.get("from","") or d.get("from_addr",""),
+            "date": d.get("date",""),
+            "category": d.get("category",""),
+            "guardrail": d.get("guardrail",{}).get("status",""),
+            "guardrail_reason": ", ".join(d.get("guardrail",{}).get("notes", [])),
+            "expired": d.get("temporal",{}).get("status",""),
+            "subscription": d.get("subscription",{}).get("is_subscription", False),
+            "attachments": len(d.get("attachments", [])),
+            "folder": d.get("folder",""),
+            "uid": d.get("uid",""),
+        } for d in data])
+        st.dataframe(df, width="stretch")
+        with st.expander("Email details preview"):
+            idx = st.number_input("Row", min_value=0, max_value=len(data)-1, value=0, step=1)
+            rec = data[int(idx)]
+            view_mode = st.selectbox("View as", ["Markdown", "Plain Text", "Raw HTML"], index=0)
+            header_lines = [
+                f"**Subject:** {rec.get('subject','')}",
+                f"From: {rec.get('from','') or rec.get('from_addr','')}",
+                f"To: {', '.join(rec.get('to', []) or [])}",
+                f"Date: {rec.get('date','')}",
+                f"Message-ID: {rec.get('message_id','')}",
+                f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}",
+            ]
+            if view_mode == "Plain Text":
+                body = rec.get("body_text") or rec.get("text") or rec.get("raw","")
+                body_content = "\n".join(header_lines + ["", body or ""])
+            elif view_mode == "Raw HTML":
+                body = rec.get("body_html") or rec.get("raw","")
+                body_content = "\n".join(header_lines + ["", body or ""])
+            else:
+                body = _markdown_from_record(rec)
+                body_content = "\n".join(header_lines + ["", body or ""])
+            st.code(body_content or "")
+            if DEBUG_MODE:
+                st.markdown("**Full record (debug):**")
+                st.code(json.dumps(rec, ensure_ascii=False, indent=2))
+    else:
+        st.info("No data yet.")
+
+with tab_load:
     st.subheader("Load .eml samples")
     folder = st.text_input("Folder path", value=os.path.join(DATA_DIR, "sample_emails"))
     if st.button("Load Files"):
@@ -179,7 +216,7 @@ with tab1:
         else:
             st.warning("No .eml files found.")
 
-with tab2:
+with tab_classify:
     st.subheader("Run Classification Pipeline")
     if st.button(f"Process {COLLECTION_LABEL}"):
         data = load_corpus()
@@ -193,7 +230,7 @@ with tab2:
             st.success(f"Processed {len(results)} emails.")
             st.rerun()
 
-with tab3:
+with tab_search:
     st.subheader("Semantic Topic Search")
     query = st.text_input("Enter a topic (e.g., Role Playing Games, Job offer, Promotion)")
     col_limit, col_category, col_filter = st.columns(3)
@@ -312,53 +349,7 @@ with tab3:
     else:
         st.info("No hits yet. Try classifying first.")
 
-with tab4:
-    st.subheader(f"{COLLECTION_LABEL} Overview")
-    data = load_corpus()
-    if data:
-        df = pd.DataFrame([{
-            "subject": d.get("subject",""),
-            "sender": d.get("from","") or d.get("from_addr",""),
-            "date": d.get("date",""),
-            "category": d.get("category",""),
-            "guardrail": d.get("guardrail",{}).get("status",""),
-            "guardrail_reason": ", ".join(d.get("guardrail",{}).get("notes", [])),
-            "expired": d.get("temporal",{}).get("status",""),
-            "subscription": d.get("subscription",{}).get("is_subscription", False),
-            "attachments": len(d.get("attachments", [])),
-            "folder": d.get("folder",""),
-            "uid": d.get("uid",""),
-        } for d in data])
-        st.dataframe(df, width="stretch")
-        with st.expander("Email details preview"):
-            idx = st.number_input("Row", min_value=0, max_value=len(data)-1, value=0, step=1)
-            rec = data[int(idx)]
-            view_mode = st.selectbox("View as", ["Markdown", "Plain Text", "Raw HTML"], index=0)
-            header_lines = [
-                f"**Subject:** {rec.get('subject','')}",
-                f"From: {rec.get('from','') or rec.get('from_addr','')}",
-                f"To: {', '.join(rec.get('to', []) or [])}",
-                f"Date: {rec.get('date','')}",
-                f"Message-ID: {rec.get('message_id','')}",
-                f"Folder/UID: {rec.get('folder','')} / {rec.get('uid','')}",
-            ]
-            if view_mode == "Plain Text":
-                body = rec.get("body_text") or rec.get("text") or rec.get("raw","")
-                body_content = "\n".join(header_lines + ["", body or ""])
-            elif view_mode == "Raw HTML":
-                body = rec.get("body_html") or rec.get("raw","")
-                body_content = "\n".join(header_lines + ["", body or ""])
-            else:
-                body = _markdown_from_record(rec)
-                body_content = "\n".join(header_lines + ["", body or ""])
-            st.code(body_content or "")
-            if DEBUG_MODE:
-                st.markdown("**Full record (debug):**")
-                st.code(json.dumps(rec, ensure_ascii=False, indent=2))
-    else:
-        st.info("No data yet.")
-
-with tab5:
+with tab_maint:
     st.subheader("Maintenance")
     st.caption("Clear stored emails and vector index. This cannot be undone.")
 
