@@ -41,10 +41,12 @@
 
 ## Versioning (semver)
 
+- Create a dedicated release issue to track the merge to `main`, running the version script on `main`, bumping `Dev`, and any other steps needed to reset `Dev` for new work.
 - Version is stored in the root `VERSION` file and displayed in the full UI header.
 - Use `tools/set_version.py` to set the version and optionally commit/tag. On non-`main` branches, the branch name is appended (e.g., `0.1.1-Dev`). On `main`, it tags by default (use `--no-tag` to skip).
-  - Release on main: `python tools/set_version.py 0.1.0 --commit`
+  - Release on main: `python tools/set_version.py 0.1.0 --commit --issue 39`
   - Bump Dev after release: `python tools/set_version.py 0.1.1 --commit`
+
 
 ## Docker (single image for both)
 
