@@ -83,7 +83,14 @@ def main() -> int:
     if args.commit:
         _run(["git", "add", "VERSION"])
         msg = args.message or f"Release v{version}"
-        _run(["git", "commit", "-m", msg])
+        has_changes = subprocess.call(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=ROOT,
+        ) != 0
+        if has_changes:
+            _run(["git", "commit", "-m", msg])
+        else:
+            print("No VERSION changes to commit; skipping commit.")
 
     tag = args.tag
     if tag is None:
