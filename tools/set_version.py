@@ -47,6 +47,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Set repo version and optionally tag.")
     parser.add_argument("version", help="New version (semver, e.g. 0.1.0).")
     parser.add_argument(
+        "--issue",
+        help="Issue identifier for commit message (e.g., '39' or '#39').",
+    )
+    parser.add_argument(
         "--commit",
         action="store_true",
         help="Create a commit updating VERSION.",
@@ -82,7 +86,11 @@ def main() -> int:
 
     if args.commit:
         _run(["git", "add", "VERSION"])
-        msg = args.message or f"Release v{version}"
+        issue = (args.issue or "").strip()
+        if issue and not issue.startswith("#"):
+            issue = f"#{issue}"
+        prefix = f"Issue {issue}: " if issue else ""
+        msg = args.message or f"{prefix}Release v{version}"
         has_changes = subprocess.call(
             ["git", "diff", "--cached", "--quiet"],
             cwd=ROOT,
