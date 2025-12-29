@@ -8,6 +8,7 @@
 # Note: GitHub issue numbers are numeric (e.g. #123). The letter-prefix form
 # (e.g. xm-123) is an internal identifier you can use in commit messages; it
 # does not change GitHub issue numbering.
+ 
 
 MSG_FILE="$1"
 
