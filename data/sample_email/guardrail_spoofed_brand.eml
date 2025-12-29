@@ -1,0 +1,17 @@
+From: "PayPal Support" <alerts@paypal-security-notice.biz>
+To: user@test.com
+Subject: Your PayPal Account Requires Immediate Attention
+Date: Sun, 24 Nov 2024 09:00:00 -0500
+Message-ID: <guardrail-spoofed-brand@test.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+  <body>
+    <p>Dear Customer,</p>
+    <p>We noticed unusual activity on your PayPal account. To secure your account, please verify your information.</p>
+    <p><a href="http://paypal-security-notice.biz/verify">Verify Now</a></p>
+    <p>If you do not act within 24 hours, your account may be limited.</p>
+    <p>Thank you,<br>PayPal Security Team</p>
+  </body>
+</html>

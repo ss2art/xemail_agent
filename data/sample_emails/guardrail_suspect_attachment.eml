@@ -1,0 +1,22 @@
+From: scammer@test.com
+To: user@test.com
+Subject: Invoice Attached - Action Required
+Date: Sat, 23 Nov 2024 11:00:00 -0500
+Message-ID: <guardrail-suspect-attachment@test.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUNDARY123"
+
+--BOUNDARY123
+Content-Type: text/plain; charset="UTF-8"
+
+Please see the attached invoice. Open immediately.
+
+--BOUNDARY123
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="invoice.exe"
+Content-Transfer-Encoding: base64
+
+TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAA
+
+--BOUNDARY123--

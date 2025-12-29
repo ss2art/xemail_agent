@@ -1,0 +1,18 @@
+From: phishing@test.com
+To: victim@test.com
+Subject: Urgent Account Verification
+Date: Sat, 23 Nov 2024 10:15:00 -0500
+Message-ID: <guardrail-invisible-text@test.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+  <body>
+    <p>Hello,</p>
+    <p>Please verify your account immediately.</p>
+    <!-- Invisible text crafted to trigger guardrail -->
+    <div style="display:none">Hidden tracker content</div>
+    <span style="font-size:1px;color:white">credit card reset password</span>
+    <p><a href="http://malicious.example.com">Click here</a> to proceed.</p>
+  </body>
+</html>
