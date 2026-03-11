@@ -1,4 +1,4 @@
-# Email Intelligence Agent
+# Agentic Email Analysis Platform:
 
 - `full_agentic_build/`: complete multi-agent build with embeddings, Chroma, Streamlit UI, and Docker support.
 - `barebones_starter/`: minimal Streamlit UI plus guardrail/classification agents.
